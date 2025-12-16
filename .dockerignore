@@ -1,0 +1,17 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv
+*.avi
+*.mp4
+output/
+.git
+.gitignore
+README.md
+.vscode
+.idea
+
