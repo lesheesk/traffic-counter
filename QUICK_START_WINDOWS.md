@@ -309,3 +309,5 @@ python main.py
 - PuTTY: https://www.putty.org/
 - Python для Windows: https://www.python.org/downloads/
 
+
+

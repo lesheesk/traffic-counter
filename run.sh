@@ -31,3 +31,5 @@ fi
 echo "▶️  Запуск приложения..."
 python main.py
 
+
+

@@ -29,3 +29,5 @@ ENV PYTHONUNBUFFERED=1
 # Команда по умолчанию
 CMD ["python", "main.py"]
 
+
+

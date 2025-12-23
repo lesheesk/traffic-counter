@@ -6,7 +6,7 @@ import os
 # Настройки RTSP потока
 RTSP_URL = os.getenv(
     "RTSP_URL",
-    "rtsp://username:password@192.168.1.64:554/Streaming/Channels/101"
+    "rtsp://admin:banana38@45.152.169.105:55555//Streaming/Channels/101"
 )
 
 # Настройки детекции
@@ -15,9 +15,9 @@ CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))
 VEHICLE_CLASSES = [2, 3, 5, 7]  # COCO: 2=car, 3=motorcycle, 5=bus, 7=truck
 
 # Настройки подсчета
-LINE_POSITION = int(os.getenv("LINE_POSITION", "400"))  # Y-координата линии подсчета
+VERTICAL_LINE_POSITION = int(os.getenv("VERTICAL_LINE_POSITION", "480"))  # X-координата вертикальной линии подсчета (слева направо)
 LINE_THICKNESS = int(os.getenv("LINE_THICKNESS", "5"))
-COUNTING_DIRECTION = os.getenv("COUNTING_DIRECTION", "down")  # "up" или "down"
+COUNTING_DIRECTION = os.getenv("COUNTING_DIRECTION", "left_to_right")  # "left_to_right" или "right_to_left"
 
 # Настройки видео
 FRAME_WIDTH = int(os.getenv("FRAME_WIDTH", "1920"))

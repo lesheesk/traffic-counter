@@ -11,7 +11,7 @@ from config import (
     YOLO_MODEL,
     CONFIDENCE_THRESHOLD,
     VEHICLE_CLASSES,
-    LINE_POSITION,
+    VERTICAL_LINE_POSITION,
     LINE_THICKNESS,
     COUNTING_DIRECTION,
     SHOW_VIDEO,
@@ -35,7 +35,7 @@ class VehicleTracker:
         self.vehicle_count = 0
         self.tracked_vehicles = {}  # ID -> {'center': (x, y), 'crossed': bool}
         self.next_id = 0
-        self.line_position = LINE_POSITION
+        self.line_position = VERTICAL_LINE_POSITION
         
     def update(self, detections):
         """
@@ -55,22 +55,24 @@ class VehicleTracker:
             vehicle_id = self._assign_or_create_track(center_x, center_y)
             current_centers[vehicle_id] = (center_x, center_y)
             
-            # Проверяем пересечение линии
+            # Проверяем пересечение вертикальной линии (слева направо)
             if vehicle_id in self.tracked_vehicles:
-                prev_y = self.tracked_vehicles[vehicle_id]['center'][1]
+                prev_x = self.tracked_vehicles[vehicle_id]['center'][0]
                 prev_crossed = self.tracked_vehicles[vehicle_id]['crossed']
                 
                 if not prev_crossed:
-                    if COUNTING_DIRECTION == "down":
-                        if prev_y < self.line_position and center_y >= self.line_position:
+                    if COUNTING_DIRECTION == "left_to_right":
+                        # Движение слева направо: пересечение линии справа
+                        if prev_x < self.line_position and center_x >= self.line_position:
                             self.vehicle_count += 1
                             self.tracked_vehicles[vehicle_id]['crossed'] = True
-                            logger.info(f"Автомобиль #{vehicle_id} пересек линию. Всего: {self.vehicle_count}")
-                    else:  # up
-                        if prev_y > self.line_position and center_y <= self.line_position:
+                            logger.info(f"Автомобиль #{vehicle_id} пересек линию слева направо. Всего: {self.vehicle_count}")
+                    else:  # right_to_left
+                        # Движение справа налево: пересечение линии слева
+                        if prev_x > self.line_position and center_x <= self.line_position:
                             self.vehicle_count += 1
                             self.tracked_vehicles[vehicle_id]['crossed'] = True
-                            logger.info(f"Автомобиль #{vehicle_id} пересек линию. Всего: {self.vehicle_count}")
+                            logger.info(f"Автомобиль #{vehicle_id} пересек линию справа налево. Всего: {self.vehicle_count}")
             
             # Обновляем позицию
             self.tracked_vehicles[vehicle_id] = {
@@ -170,11 +172,11 @@ class TrafficCounter:
     
     def _draw_results(self, frame, detections):
         """Отрисовка результатов детекции и линии подсчета"""
-        # Рисуем линию подсчета
+        # Рисуем вертикальную линию подсчета
         cv2.line(
             frame,
-            (0, self.tracker.line_position),
-            (frame.shape[1], self.tracker.line_position),
+            (self.tracker.line_position, 0),
+            (self.tracker.line_position, frame.shape[0]),
             (0, 255, 0),
             LINE_THICKNESS
         )
@@ -277,4 +279,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
 
