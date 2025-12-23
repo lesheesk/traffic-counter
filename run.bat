@@ -22,7 +22,7 @@ REM Проверка переменных окружения
 if "%RTSP_URL%"=="" (
     echo ⚠️  Внимание: RTSP_URL не установлен!
     echo    Установите переменную окружения:
-    echo    set RTSP_URL=rtsp://username:password@192.168.1.64:554/Streaming/Channels/101
+    echo    set rtsp://admin:banana38@45.152.169.105:55555//Streaming/Channels/101
     echo.
 )
 

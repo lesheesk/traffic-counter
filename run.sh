@@ -23,7 +23,7 @@ pip install -r requirements.txt
 if [ -z "$RTSP_URL" ]; then
     echo "⚠️  Внимание: RTSP_URL не установлен!"
     echo "   Установите переменную окружения:"
-    echo "   export RTSP_URL='rtsp://username:password@192.168.1.64:554/Streaming/Channels/101'"
+    echo "   export RTSP_URL='rtsp://admin:banana38@45.152.169.105:55555//Streaming/Channels/101'"
     echo ""
 fi
 

@@ -25,7 +25,7 @@ git add .
 git commit -m "Initial commit: Traffic counter with YOLOv8"
 
 # Добавление удаленного репозитория (замените YOUR_USERNAME на ваш GitHub username)
-git remote add origin https://github.com/YOUR_USERNAME/traffic-counter.git
+git remote add origin https://github.com/leshee/traffic-counter.git
 
 # Отправка на GitHub
 git branch -M main
@@ -110,7 +110,7 @@ newgrp docker
 cd ~
 
 # Клонирование проекта
-git clone https://github.com/YOUR_USERNAME/traffic-counter.git
+git clone https://github.com/leshee/traffic-counter.git
 cd traffic-counter
 ```
 
@@ -175,7 +175,7 @@ sudo apt-get install -y python3 python3-pip python3-venv git libgl1-mesa-glx lib
 
 ```bash
 cd ~
-git clone https://github.com/YOUR_USERNAME/traffic-counter.git
+git clone https://github.com/leshee/traffic-counter.git
 cd traffic-counter
 ```
 

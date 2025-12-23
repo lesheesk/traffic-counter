@@ -58,7 +58,7 @@ if [ ! -f .env ]; then
         echo "✅ Создан .env из примера. Отредактируйте его: nano .env"
     else
         cat > .env << 'EOF'
-RTSP_URL=rtsp://username:password@192.168.1.64:554/Streaming/Channels/101
+RTSP_URL=rtsp://admin:banana38@45.152.169.105:55555//Streaming/Channels/101
 YOLO_MODEL=yolov8n.pt
 CONFIDENCE_THRESHOLD=0.5
 LINE_POSITION=400
