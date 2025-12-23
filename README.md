@@ -77,7 +77,9 @@ docker compose restart
 1. **Установите зависимости системы:**
 ```bash
 sudo apt-get update
-sudo apt-get install -y python3-pip python3-venv libgl1-mesa-glx libglib2.0-0
+# Для Ubuntu 22.04+ используйте libgl1, для старых версий - libgl1-mesa-glx
+sudo apt-get install -y python3-pip python3-venv libglib2.0-0
+sudo apt-get install -y libgl1 2>/dev/null || sudo apt-get install -y libgl1-mesa-glx
 ```
 
 2. **Создайте виртуальное окружение:**

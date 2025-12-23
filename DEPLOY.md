@@ -215,7 +215,10 @@ ssh user@your-vps-ip
 sudo apt-get update && sudo apt-get upgrade -y
 
 # Установка Python и зависимостей
-sudo apt-get install -y python3 python3-pip python3-venv git libgl1-mesa-glx libglib2.0-0
+# Для Ubuntu 22.04+ используйте libgl1, для старых версий - libgl1-mesa-glx
+sudo apt-get install -y python3 python3-pip python3-venv git libglib2.0-0
+# Попробуйте установить libgl1 (для новых версий)
+sudo apt-get install -y libgl1 2>/dev/null || sudo apt-get install -y libgl1-mesa-glx
 ```
 
 #### Шаг 2: Клонирование проекта
@@ -405,6 +408,27 @@ docker-compose logs
 
 # Проверка конфигурации
 docker-compose config
+```
+
+### Проблема: E: Package 'libgl1-mesa-glx' has no installation candidate
+
+Эта ошибка возникает в Ubuntu 22.04+ и новых версиях Debian, где пакет `libgl1-mesa-glx` был заменен на `libgl1`.
+
+**Решение:**
+
+```bash
+# Для Ubuntu 22.04+ используйте:
+sudo apt-get install -y libgl1 libglib2.0-0
+
+# Для старых версий Ubuntu (20.04 и ниже):
+sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
+```
+
+Или универсальная команда (автоматически выберет правильный пакет):
+```bash
+sudo apt-get update
+sudo apt-get install -y libglib2.0-0
+sudo apt-get install -y libgl1 2>/dev/null || sudo apt-get install -y libgl1-mesa-glx
 ```
 
 ### Проблема: Недостаточно памяти
