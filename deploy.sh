@@ -40,14 +40,16 @@ if [ -d "$PROJECT_DIR" ]; then
     git pull || echo "⚠️  Не удалось обновить через git. Продолжаем..."
 else
     echo "📂 Клонирование проекта..."
-    read -p "Введите URL вашего GitHub репозитория (или нажмите Enter для пропуска): " REPO_URL
-    if [ -n "$REPO_URL" ]; then
-        git clone "$REPO_URL" "$PROJECT_DIR"
-        cd "$PROJECT_DIR"
-    else
-        echo "⚠️  Пропуск клонирования. Убедитесь, что проект находится в $PROJECT_DIR"
-        exit 1
+    echo "💡 Подсказка: Для публичного репозитория используйте URL БЕЗ username:"
+    echo "   https://github.com/lesheesk/traffic-counter.git"
+    echo "   НЕ используйте: https://lesheesk@github.com/... (будет запрашивать пароль)"
+    echo ""
+    read -p "Введите URL вашего GitHub репозитория (или Enter для https://github.com/lesheesk/traffic-counter.git): " REPO_URL
+    if [ -z "$REPO_URL" ]; then
+        REPO_URL="https://github.com/lesheesk/traffic-counter.git"
     fi
+    git clone "$REPO_URL" "$PROJECT_DIR"
+    cd "$PROJECT_DIR"
 fi
 
 # Проверка наличия .env файла

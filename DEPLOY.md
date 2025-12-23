@@ -25,14 +25,24 @@ git add .
 git commit -m "Initial commit: Traffic counter with YOLOv8"
 
 # Добавление удаленного репозитория (замените YOUR_USERNAME на ваш GitHub username)
-git remote add origin https://github.com/leshee/traffic-counter.git
+git remote add origin https://github.com/lesheesk/traffic-counter.git
 
 # Отправка на GitHub
 git branch -M main
 git push -u origin main
 ```
 
-**Примечание:** При первом `git push` GitHub попросит ввести логин и пароль. Используйте **Personal Access Token** вместо пароля (см. инструкцию ниже).
+**Примечание:** При первом `git push` GitHub попросит ввести логин и пароль. Используйте **Personal Access Token** вместо пароля.
+
+**Как создать Personal Access Token:**
+1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Generate new token (classic)
+3. Название: `traffic-counter-local`
+4. Срок действия: выберите нужный
+5. Отметьте `repo` (полный доступ к репозиториям)
+6. Generate token
+7. **Скопируйте токен** (он показывается только один раз!)
+8. Используйте этот токен вместо пароля при `git push`
 
 ### 3. Важно: Безопасность
 
@@ -105,14 +115,51 @@ newgrp docker
 
 #### Шаг 3: Клонирование репозитория
 
+**Для публичного репозитория (рекомендуется):**
+
 ```bash
 # Переход в домашнюю директорию
 cd ~
 
-# Клонирование проекта
-git clone https://github.com/leshee/traffic-counter.git
+# Клонирование публичного репозитория БЕЗ username в URL
+git clone https://github.com/lesheesk/traffic-counter.git
 cd traffic-counter
 ```
+
+**⚠️ Важно:** Используйте URL **БЕЗ** username (`https://github.com/...`), а НЕ `https://lesheesk@github.com/...`
+
+Если Git все равно запрашивает пароль, очистите сохраненные учетные данные:
+
+```bash
+# Очистка кэша Git credentials
+git config --global --unset credential.helper
+# Или для Linux:
+rm ~/.git-credentials 2>/dev/null
+# Затем попробуйте клонировать снова
+git clone https://github.com/lesheesk/traffic-counter.git
+```
+
+**Альтернативные способы (если репозиторий приватный):**
+
+**Способ 1: Использование Personal Access Token в URL**
+
+```bash
+git clone https://YOUR_TOKEN@github.com/lesheesk/traffic-counter.git
+```
+
+**Способ 2: Использование SSH (если настроены SSH ключи)**
+
+```bash
+git clone git@github.com:lesheesk/traffic-counter.git
+```
+
+**Как создать Personal Access Token (только для приватных репозиториев):**
+1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Generate new token (classic)
+3. Название: `vps-deployment`
+4. Срок действия: выберите нужный
+5. Отметьте `repo`
+6. Generate token и скопируйте его
 
 #### Шаг 4: Настройка конфигурации
 
@@ -175,7 +222,7 @@ sudo apt-get install -y python3 python3-pip python3-venv git libgl1-mesa-glx lib
 
 ```bash
 cd ~
-git clone https://github.com/leshee/traffic-counter.git
+git clone https://github.com/lesheesk/traffic-counter.git
 cd traffic-counter
 ```
 
@@ -251,7 +298,7 @@ sudo journalctl -u traffic-counter -f
 
 ```bash
 cd ~/traffic-counter
-git pull
+git pull  # Если запросит пароль, используйте Personal Access Token
 docker-compose up -d --build
 ```
 
@@ -259,11 +306,24 @@ docker-compose up -d --build
 
 ```bash
 cd ~/traffic-counter
-git pull
+git pull  # Если запросит пароль, используйте Personal Access Token
 source venv/bin/activate
 pip install -r requirements.txt
 sudo systemctl restart traffic-counter
 ```
+
+**Если Git запрашивает пароль при `git pull`:**
+
+1. **Используйте Personal Access Token** вместо пароля GitHub
+2. Или настройте Git credential helper:
+   ```bash
+   git config --global credential.helper store
+   # При следующем git pull введите токен один раз, он сохранится
+   ```
+3. Или используйте SSH URL (если настроены SSH ключи):
+   ```bash
+   git remote set-url origin git@github.com:lesheesk/traffic-counter.git
+   ```
 
 ## Мониторинг и логи
 
