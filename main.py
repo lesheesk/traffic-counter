@@ -1,9 +1,9 @@
 """
-Система подсчета транспорта на основе RTSP потока и YOLOv8
+Система подсчета транспорта на основе RTSP потока и YOLOv8 (ONNX Runtime)
 """
 import cv2
 import numpy as np
-from ultralytics import YOLO
+import onnxruntime as ort
 import logging
 from collections import defaultdict
 from config import (
@@ -111,12 +111,154 @@ class VehicleTracker:
         return assigned_id
 
 
+class YOLOv8ONNX:
+    """Класс для работы с YOLOv8 моделью через ONNX Runtime"""
+    
+    def __init__(self, model_path, conf_threshold=0.5):
+        """
+        Инициализация ONNX модели
+        
+        Args:
+            model_path: путь к .onnx файлу модели
+            conf_threshold: порог уверенности детекции
+        """
+        self.model_path = model_path
+        self.conf_threshold = conf_threshold
+        self.input_size = 640  # YOLOv8 использует размер 640x640
+        
+        # Создаем сессию ONNX Runtime
+        providers = ['CPUExecutionProvider']
+        self.session = ort.InferenceSession(model_path, providers=providers)
+        
+        # Получаем информацию о входе и выходе модели
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_name = self.session.get_outputs()[0].name
+        
+        logger.info(f"ONNX модель {model_path} загружена")
+    
+    def preprocess(self, image):
+        """
+        Предобработка изображения для модели
+        
+        Args:
+            image: входное изображение (BGR формат от OpenCV)
+        
+        Returns:
+            preprocessed: предобработанное изображение (1, 3, 640, 640)
+            scale: масштаб для преобразования координат обратно
+            pad: отступы для преобразования координат
+        """
+        # Получаем размеры исходного изображения
+        h, w = image.shape[:2]
+        
+        # Вычисляем масштаб и размеры для сохранения пропорций
+        scale = min(self.input_size / h, self.input_size / w)
+        new_h, new_w = int(h * scale), int(w * scale)
+        
+        # Изменяем размер изображения с сохранением пропорций
+        resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+        
+        # Создаем квадратное изображение с нулевыми отступами
+        padded = np.full((self.input_size, self.input_size, 3), 114, dtype=np.uint8)
+        pad_h = (self.input_size - new_h) // 2
+        pad_w = (self.input_size - new_w) // 2
+        padded[pad_h:pad_h + new_h, pad_w:pad_w + new_w] = resized
+        
+        # Преобразуем в формат модели: BGR -> RGB, нормализация, транспонирование
+        rgb = cv2.cvtColor(padded, cv2.COLOR_BGR2RGB)
+        normalized = rgb.astype(np.float32) / 255.0
+        transposed = np.transpose(normalized, (2, 0, 1))
+        batched = np.expand_dims(transposed, axis=0)
+        
+        return batched, scale, (pad_w, pad_h)
+    
+    def postprocess(self, output, scale, pad, original_shape):
+        """
+        Постобработка вывода модели
+        
+        Args:
+            output: вывод модели (numpy array) - формат [1, 84, num_detections]
+            scale: масштаб предобработки
+            pad: отступы (pad_w, pad_h)
+            original_shape: исходный размер изображения (h, w)
+        
+        Returns:
+            detections: список детекций в формате [(x1, y1, x2, y2, conf, class_id), ...]
+        """
+        # YOLOv8 выдает тензор формы [1, 84, num_detections]
+        # Где 84 = 4 (координаты xywh) + 80 (классы COCO)
+        # Транспонируем в [num_detections, 84]
+        predictions = np.squeeze(output, axis=0).transpose((1, 0))
+        
+        detections = []
+        original_h, original_w = original_shape[:2]
+        pad_w, pad_h = pad
+        
+        for pred in predictions:
+            # Координаты центра и размеры (в пикселях на изображении 640x640)
+            x_center, y_center, width, height = pred[:4]
+            
+            # Преобразуем обратно в исходное разрешение
+            x_center = (x_center - pad_w) / scale
+            y_center = (y_center - pad_h) / scale
+            width = width / scale
+            height = height / scale
+            
+            # Преобразуем в формат (x1, y1, x2, y2)
+            x1 = int(x_center - width / 2)
+            y1 = int(y_center - height / 2)
+            x2 = int(x_center + width / 2)
+            y2 = int(y_center + height / 2)
+            
+            # Ограничиваем координаты рамкой изображения
+            x1 = max(0, min(x1, original_w))
+            y1 = max(0, min(y1, original_h))
+            x2 = max(0, min(x2, original_w))
+            y2 = max(0, min(y2, original_h))
+            
+            # Пропускаем если размеры некорректны
+            if x2 <= x1 or y2 <= y1:
+                continue
+            
+            # Находим класс с максимальной вероятностью
+            scores = pred[4:]
+            class_id = np.argmax(scores)
+            confidence = float(scores[class_id])
+            
+            # Фильтруем по порогу уверенности и нужным классам
+            if confidence >= self.conf_threshold and class_id in VEHICLE_CLASSES:
+                detections.append((x1, y1, x2, y2, confidence, class_id))
+        
+        return detections
+    
+    def predict(self, image):
+        """
+        Предсказание на изображении
+        
+        Args:
+            image: входное изображение (BGR формат от OpenCV)
+        
+        Returns:
+            detections: список детекций в формате [(x1, y1, x2, y2, conf, class_id), ...]
+        """
+        # Предобработка
+        preprocessed, scale, pad = self.preprocess(image)
+        
+        # Инференс
+        outputs = self.session.run([self.output_name], {self.input_name: preprocessed})
+        
+        # Постобработка
+        detections = self.postprocess(outputs[0], scale, pad, image.shape)
+        
+        return detections
+
+
 class TrafficCounter:
     """Основной класс для подсчета транспорта"""
     
     def __init__(self):
-        logger.info("Инициализация модели YOLOv8...")
-        self.model = YOLO(YOLO_MODEL)
+        logger.info("Инициализация модели YOLOv8 (ONNX Runtime)...")
+        self.model = YOLOv8ONNX(YOLO_MODEL, CONFIDENCE_THRESHOLD)
         logger.info(f"Модель {YOLO_MODEL} загружена")
         
         self.tracker = VehicleTracker()
@@ -149,18 +291,8 @@ class TrafficCounter:
     
     def process_frame(self, frame):
         """Обработка одного кадра"""
-        # Детекция объектов
-        results = self.model(frame, conf=CONFIDENCE_THRESHOLD, verbose=False)
-        
-        detections = []
-        for result in results:
-            boxes = result.boxes
-            for box in boxes:
-                class_id = int(box.cls[0])
-                if class_id in VEHICLE_CLASSES:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    conf = float(box.conf[0])
-                    detections.append((x1, y1, x2, y2, conf, class_id))
+        # Детекция объектов через ONNX модель
+        detections = self.model.predict(frame)
         
         # Обновление трекера
         self.tracker.update(detections)

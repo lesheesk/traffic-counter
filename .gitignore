@@ -21,6 +21,12 @@ output/
 *.pt
 yolov8*.pt
 
+# Сборка
+build/
+dist/
+*.spec
+*.pyc
+
 # IDE
 .vscode/
 .idea/

@@ -5,10 +5,10 @@
 ## Возможности
 
 - 📹 Подключение к RTSP потоку с камеры Hikvision
-- 🚗 Детекция транспортных средств с помощью YOLOv8
+- 🚗 Детекция транспортных средств с помощью YOLOv8 (ONNX Runtime)
 - 📊 Подсчет пересечений линии
 - 🎥 Опциональная запись обработанного видео
-- 🐳 Docker контейнеризация для легкого развертывания
+- 📦 Сборка в исполняемый .exe файл для Windows (~50-80 МБ)
 
 ## Структура проекта
 
@@ -17,118 +17,60 @@ traffic-counter/
 ├── main.py              # Основной код приложения
 ├── config.py            # Конфигурационный файл
 ├── requirements.txt     # Python зависимости
-├── Dockerfile           # Docker образ
-├── docker-compose.yml   # Docker Compose конфигурация
-├── deploy.sh            # Скрипт автоматического развертывания
-├── update.sh            # Скрипт обновления на VPS
-├── DEPLOY.md            # Подробная инструкция по развертыванию
+├── run.bat              # Скрипт запуска для Windows
+├── build.bat            # Скрипт сборки .exe файла
+├── BUILD.md             # Инструкция по сборке
 └── README.md           # Документация
 ```
 
 ## Требования
 
-- Python 3.10+
-- Ubuntu 20.04+ (или Docker)
+- Python 3.10+ (для разработки)
+- Windows 10+ (для использования .exe файла)
 - Камера Hikvision с RTSP доступом
-
-## 🚀 Развертывание на VPS через GitHub
-
-**Рекомендуемый способ передачи проекта на удаленный сервер!**
-
-### 📖 Инструкции по платформам:
-
-- **🪟 Windows 10:** См. [QUICK_START_WINDOWS.md](QUICK_START_WINDOWS.md) - подробная инструкция для Windows
-- **🐧 Linux/Ubuntu:** См. [QUICK_START.md](QUICK_START.md) - быстрый старт
-- **📚 Подробная инструкция:** См. [DEPLOY.md](DEPLOY.md)
-
-### Быстрый старт (Windows 10):
-
-1. **Установите Git для Windows:** https://git-scm.com/download/win
-
-2. **Откройте Git Bash в папке проекта** и выполните:
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/YOUR_USERNAME/traffic-counter.git
-git push -u origin main
-```
-
-3. **На VPS сервере выполните:**
-```bash
-git clone https://github.com/YOUR_USERNAME/traffic-counter.git
-cd traffic-counter
-chmod +x deploy.sh
-./deploy.sh
-```
-
-4. **Настройте конфигурацию:**
-```bash
-nano .env  # Отредактируйте RTSP_URL и другие настройки
-docker compose restart
-```
-
-**⚠️ Важно:** Не коммитьте пароли! Используйте файл `.env` (он уже в `.gitignore`)
 
 ## Установка и запуск
 
-### Вариант 1: Локальная установка (Ubuntu)
+### Вариант 1: Через .exe файл (рекомендуется)
 
-1. **Установите зависимости системы:**
-```bash
-sudo apt-get update
-# Для Ubuntu 22.04+ используйте libgl1, для старых версий - libgl1-mesa-glx
-sudo apt-get install -y python3-pip python3-venv libglib2.0-0
-sudo apt-get install -y libgl1 2>/dev/null || sudo apt-get install -y libgl1-mesa-glx
-```
+1. **Соберите .exe файл:**
+   ```batch
+   build.bat
+   ```
+   
+2. **Исполняемый файл будет в:** `dist\traffic-counter.exe`
 
-2. **Создайте виртуальное окружение:**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
+3. **Запустите:**
+   - Скопируйте `traffic-counter.exe` в удобное место
+   - (Опционально) Создайте файл `config.py` рядом с exe для переопределения настроек
+   - Или настройте переменные окружения
+   - Запустите `traffic-counter.exe`
 
-3. **Установите Python зависимости:**
-```bash
-pip install -r requirements.txt
-```
+Подробнее см. [BUILD.md](BUILD.md)
 
-4. **Настройте конфигурацию:**
-Отредактируйте `config.py` или установите переменные окружения:
-```bash
-export RTSP_URL="rtsp://username:password@192.168.1.64:554/Streaming/Channels/101"
-export LINE_POSITION=400
-export SHOW_VIDEO=true
-```
+### Вариант 2: Через Python скрипт
 
-5. **Запустите приложение:**
-```bash
-python main.py
-```
+1. **Установите Python 3.10+** (если еще не установлен):
+   - Скачайте с https://www.python.org/downloads/
+   - При установке отметьте "Add Python to PATH"
 
-### Вариант 2: Docker
+2. **Запустите скрипт:**
+   ```batch
+   run.bat
+   ```
+   
+   Скрипт автоматически:
+   - Создаст виртуальное окружение (если нужно)
+   - Установит зависимости
+   - Запустит приложение
 
-1. **Отредактируйте docker-compose.yml:**
-Измените переменные окружения, особенно `RTSP_URL`:
-```yaml
-environment:
-  - RTSP_URL=rtsp://username:password@192.168.1.64:554/Streaming/Channels/101
-```
-
-2. **Запустите контейнер:**
-```bash
-docker-compose up --build
-```
-
-3. **Для запуска в фоновом режиме:**
-```bash
-docker-compose up -d --build
-```
-
-4. **Просмотр логов:**
-```bash
-docker-compose logs -f
-```
+3. **Или вручную:**
+   ```batch
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+   python main.py
+   ```
 
 ## Настройка RTSP URL для Hikvision
 
@@ -151,16 +93,20 @@ rtsp://username:password@IP_ADDRESS:PORT/Streaming/Channels/CHANNEL
 
 | Переменная | Описание | По умолчанию |
 |------------|----------|--------------|
-| `RTSP_URL` | URL RTSP потока | `rtsp://username:password@192.168.1.64:554/Streaming/Channels/101` |
-| `YOLO_MODEL` | Модель YOLOv8 (n/s/m/l/x) | `yolov8n.pt` |
+| `RTSP_URL` | URL RTSP потока | (см. config.py) |
+| `YOLO_MODEL` | Модель YOLOv8 (n/s/m/l/x) | `yolov8s.onnx` |
 | `CONFIDENCE_THRESHOLD` | Порог уверенности детекции | `0.5` |
-| `LINE_POSITION` | Y-координата линии подсчета | `400` |
-| `LINE_THICKNESS` | Толщина линии | `5` |
-| `COUNTING_DIRECTION` | Направление подсчета (up/down) | `down` |
+| `VERTICAL_LINE_POSITION` | X-координата вертикальной линии подсчета | `480` |
+| `LINE_THICKNESS` | Толщина линии | `1` |
+| `COUNTING_DIRECTION` | Направление подсчета (left_to_right/right_to_left) | `left_to_right` |
 | `SHOW_VIDEO` | Показывать видео окно | `true` |
 | `SAVE_VIDEO` | Сохранять видео | `false` |
 | `OUTPUT_VIDEO_PATH` | Путь к выходному видео | `output.avi` |
 | `LOG_LEVEL` | Уровень логирования | `INFO` |
+
+### Настройка через config.py
+
+Отредактируйте файл `config.py` для изменения настроек по умолчанию.
 
 ### Классы транспортных средств
 
@@ -170,12 +116,14 @@ rtsp://username:password@IP_ADDRESS:PORT/Streaming/Channels/CHANNEL
 - `5` - Bus (автобус)
 - `7` - Truck (грузовик)
 
+Настройка в `config.py`: `VEHICLE_CLASSES = [2, 7]`
+
 ## Использование
 
 1. **Запустите приложение** (см. раздел "Установка и запуск")
 
 2. **Настройте линию подсчета:**
-   - Измените `LINE_POSITION` в конфигурации для установки Y-координаты линии
+   - Измените `VERTICAL_LINE_POSITION` в конфигурации для установки X-координаты линии
    - Линия отображается зеленым цветом на видео
 
 3. **Наблюдайте за подсчетом:**
@@ -189,14 +137,46 @@ rtsp://username:password@IP_ADDRESS:PORT/Streaming/Channels/CHANNEL
 
 ## Модели YOLOv8
 
-Доступные модели (от быстрой к точной):
-- `yolov8n.pt` - Nano (самая быстрая, меньше точность)
-- `yolov8s.pt` - Small
-- `yolov8m.pt` - Medium
-- `yolov8l.pt` - Large
-- `yolov8x.pt` - XLarge (самая точная, медленнее)
+Проект использует ONNX Runtime для работы с моделями YOLOv8.
 
-Модели автоматически загружаются при первом запуске.
+**Формат моделей:** `.onnx` (не `.pt`)
+
+Доступные модели (от быстрой к точной):
+- `yolov8n.onnx` - Nano (самая быстрая, меньше точность)
+- `yolov8s.onnx` - Small
+- `yolov8m.onnx` - Medium
+- `yolov8l.onnx` - Large
+- `yolov8x.onnx` - XLarge (самая точная, медленнее)
+
+### Конвертация моделей из .pt в .onnx
+
+Если у вас есть модели в формате `.pt`, их нужно конвертировать:
+
+1. **Временно установите ultralytics:**
+   ```batch
+   pip install ultralytics
+   ```
+
+2. **Запустите скрипт конвертации:**
+   ```batch
+   python convert_to_onnx.py
+   ```
+
+3. **После конвертации можно удалить ultralytics:**
+   ```batch
+   pip uninstall ultralytics torch torchvision -y
+   ```
+
+Подробнее см. [MIGRATION_TO_ONNX.md](MIGRATION_TO_ONNX.md)
+
+## Сборка исполняемого файла
+
+Для создания .exe файла, который можно запускать на любом Windows компьютере без установки Python:
+
+1. Запустите: `build.bat`
+2. Исполняемый файл будет в: `dist\traffic-counter.exe`
+
+Подробная инструкция: [BUILD.md](BUILD.md)
 
 ## Устранение неполадок
 
@@ -218,15 +198,9 @@ rtsp://username:password@IP_ADDRESS:PORT/Streaming/Channels/CHANNEL
 ### Проблема: Неточный подсчет
 
 **Решение:**
-- Настройте `LINE_POSITION` для оптимального расположения
+- Настройте `VERTICAL_LINE_POSITION` для оптимального расположения
 - Увеличьте `CONFIDENCE_THRESHOLD` для фильтрации ложных срабатываний
 - Используйте более точную модель YOLOv8 (yolov8m.pt или выше)
-
-### Проблема: Docker не может отобразить видео
-
-**Решение:**
-- Установите `SHOW_VIDEO=false` для работы без GUI
-- Для отображения видео в Docker требуется X11 forwarding (см. комментарии в docker-compose.yml)
 
 ## Логирование
 
@@ -247,4 +221,3 @@ rtsp://username:password@IP_ADDRESS:PORT/Streaming/Channels/CHANNEL
 2. Настройки RTSP камеры
 3. Сетевое подключение
 4. Версии зависимостей
-

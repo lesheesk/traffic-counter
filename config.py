@@ -6,17 +6,17 @@ import os
 # Настройки RTSP потока
 RTSP_URL = os.getenv(
     "RTSP_URL",
-    "rtsp://admin:banana38@45.152.169.105:55555//Streaming/Channels/101"
+    "rtsp://admin:Banana38@45.152.169.105:55556/Streaming/Channels/101"
 )
 
 # Настройки детекции
-YOLO_MODEL = os.getenv("YOLO_MODEL", "yolov8n.pt")  # yolov8n.pt, yolov8s.pt, yolov8m.pt, yolov8l.pt, yolov8x.pt
+YOLO_MODEL = os.getenv("YOLO_MODEL", "yolov8s.onnx")  # yolov8n.onnx, yolov8s.onnx, yolov8m.onnx, yolov8l.onnx, yolov8x.onnx
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))
-VEHICLE_CLASSES = [2, 3, 5, 7]  # COCO: 2=car, 3=motorcycle, 5=bus, 7=truck
+VEHICLE_CLASSES = [2,7]  # COCO: 2=car, 3=motorcycle, 5=bus, 7=truck
 
 # Настройки подсчета
 VERTICAL_LINE_POSITION = int(os.getenv("VERTICAL_LINE_POSITION", "480"))  # X-координата вертикальной линии подсчета (слева направо)
-LINE_THICKNESS = int(os.getenv("LINE_THICKNESS", "5"))
+LINE_THICKNESS = int(os.getenv("LINE_THICKNESS", "1"))
 COUNTING_DIRECTION = os.getenv("COUNTING_DIRECTION", "left_to_right")  # "left_to_right" или "right_to_left"
 
 # Настройки видео
