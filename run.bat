@@ -35,7 +35,7 @@ if not exist "venv\.dependencies_installed" (
 )
 
 REM Create ONNX model from .pt if missing (like run.sh on Ubuntu)
-if not defined YOLO_MODEL set "YOLO_MODEL=yolov8n.onnx"
+if not defined YOLO_MODEL set "YOLO_MODEL=yolov8m.onnx"
 echo %YOLO_MODEL% | findstr /E /L /C:".onnx" >nul
 if %errorlevel% equ 0 (
     if not exist "%YOLO_MODEL%" (
