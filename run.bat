@@ -34,6 +34,19 @@ if not exist "venv\.dependencies_installed" (
     echo. > venv\.dependencies_installed
 )
 
+REM Create ONNX model from .pt if missing (like run.sh on Ubuntu)
+if not defined YOLO_MODEL set "YOLO_MODEL=yolov8n.onnx"
+echo %YOLO_MODEL% | findstr /E /L /C:".onnx" >nul
+if %errorlevel% equ 0 (
+    if not exist "%YOLO_MODEL%" (
+        for %%A in ("%YOLO_MODEL%") do set "BASE=%%~nA"
+        echo Model %YOLO_MODEL% not found. Creating from %BASE%.pt (one-time download)...
+        venv\Scripts\python.exe -m pip install torch --quiet
+        venv\Scripts\python.exe -c "from ultralytics import YOLO; YOLO('%BASE%.pt').export(format='onnx')"
+        echo Done: %YOLO_MODEL%
+    )
+)
+
 REM Check environment variables
 if "%RTSP_URL%"=="" (
     echo Warning: RTSP_URL is not set!

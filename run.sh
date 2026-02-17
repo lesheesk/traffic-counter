@@ -29,7 +29,7 @@ if [ ! -f "venv/.dependencies_installed" ]; then
 fi
 
 # Создание ONNX-модели из .pt, если файла нет (однократно)
-MODEL="${YOLO_MODEL:-yolov8m.onnx}"
+MODEL="${YOLO_MODEL:-yolov8n.onnx}"
 if [[ "$MODEL" == *.onnx ]] && [ ! -f "$MODEL" ]; then
     BASE="${MODEL%.onnx}"
     echo "Модель $MODEL не найдена. Создание из $BASE.pt (однократная загрузка)..."

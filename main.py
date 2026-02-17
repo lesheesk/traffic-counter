@@ -53,86 +53,52 @@ logger = logging.getLogger(__name__)
 
 
 class VehicleTracker:
-    """Класс для отслеживания и подсчета транспортных средств"""
+    """
+    Подсчёт пересечений линии по стабильным ID из трекера Ultralytics (ByteTrack/BoT-SORT).
+    Один физический объект сохраняет один ID на протяжении всего проезда.
+    """
     
     def __init__(self):
         self.vehicle_count = 0
-        self.tracked_vehicles = {}  # ID -> {'center': (x, y), 'crossed': bool}
-        self.next_id = 0
+        self.tracked_vehicles = {}  # track_id -> {'center': (x, y), 'crossed': bool}
         self.line_position = VERTICAL_LINE_POSITION
         
     def update(self, detections):
         """
-        Обновляет состояние отслеживаемых объектов
+        Обновляет состояние по детекциям с ID трекера.
         
         Args:
-            detections: список детекций в формате [(x1, y1, x2, y2, conf, class_id), ...]
+            detections: список кортежей (x1, y1, x2, y2, conf, class_id, track_id).
+                        track_id может быть None — такие детекции не участвуют в подсчёте.
         """
-        current_centers = {}
-        
         for detection in detections:
-            x1, y1, x2, y2, conf, class_id = detection
+            x1, y1, x2, y2, conf, class_id, track_id = detection
+            if track_id is None:
+                continue
+            track_id = int(track_id)
             center_x = (x1 + x2) // 2
             center_y = (y1 + y2) // 2
             
-            # Находим ближайший существующий трек или создаем новый
-            vehicle_id = self._assign_or_create_track(center_x, center_y)
-            current_centers[vehicle_id] = (center_x, center_y)
+            prev = self.tracked_vehicles.get(track_id)
+            prev_x = prev['center'][0] if prev else None
+            prev_crossed = prev['crossed'] if prev else False
             
-            # Проверяем пересечение вертикальной линии (слева направо)
-            if vehicle_id in self.tracked_vehicles:
-                prev_x = self.tracked_vehicles[vehicle_id]['center'][0]
-                prev_crossed = self.tracked_vehicles[vehicle_id]['crossed']
-                
-                if not prev_crossed:
-                    if COUNTING_DIRECTION == "left_to_right":
-                        # Движение слева направо: пересечение линии справа
-                        if prev_x < self.line_position and center_x >= self.line_position:
-                            self.vehicle_count += 1
-                            self.tracked_vehicles[vehicle_id]['crossed'] = True
-                            logger.info(f"Автомобиль #{vehicle_id} пересек линию слева направо. Всего: {self.vehicle_count}")
-                    else:  # right_to_left
-                        # Движение справа налево: пересечение линии слева
-                        if prev_x > self.line_position and center_x <= self.line_position:
-                            self.vehicle_count += 1
-                            self.tracked_vehicles[vehicle_id]['crossed'] = True
-                            logger.info(f"Автомобиль #{vehicle_id} пересек линию справа налево. Всего: {self.vehicle_count}")
+            if not prev_crossed and prev_x is not None:
+                if COUNTING_DIRECTION == "left_to_right":
+                    if prev_x < self.line_position and center_x >= self.line_position:
+                        self.vehicle_count += 1
+                        prev_crossed = True
+                        logger.info(f"Автомобиль #{track_id} пересек линию слева направо. Всего: {self.vehicle_count}")
+                else:
+                    if prev_x > self.line_position and center_x <= self.line_position:
+                        self.vehicle_count += 1
+                        prev_crossed = True
+                        logger.info(f"Автомобиль #{track_id} пересек линию справа налево. Всего: {self.vehicle_count}")
             
-            # Обновляем позицию
-            self.tracked_vehicles[vehicle_id] = {
+            self.tracked_vehicles[track_id] = {
                 'center': (center_x, center_y),
-                'crossed': self.tracked_vehicles.get(vehicle_id, {}).get('crossed', False)
+                'crossed': prev_crossed
             }
-        
-        # Удаляем старые треки (которые не были обнаружены в текущем кадре)
-        active_ids = set(current_centers.keys())
-        self.tracked_vehicles = {
-            vid: data for vid, data in self.tracked_vehicles.items()
-            if vid in active_ids
-        }
-    
-    def _assign_or_create_track(self, center_x, center_y):
-        """Назначает существующий трек или создает новый"""
-        min_distance = float('inf')
-        assigned_id = None
-        
-        for vid, data in self.tracked_vehicles.items():
-            if data['crossed']:
-                continue
-            prev_center = data['center']
-            distance = np.sqrt(
-                (center_x - prev_center[0])**2 + 
-                (center_y - prev_center[1])**2
-            )
-            if distance < min_distance and distance < 100:  # Максимальное расстояние для связи
-                min_distance = distance
-                assigned_id = vid
-        
-        if assigned_id is None:
-            assigned_id = self.next_id
-            self.next_id += 1
-        
-        return assigned_id
 
 
 class TrafficCounter:
@@ -143,8 +109,8 @@ class TrafficCounter:
         if YOLO_MODEL.endswith('.onnx') and not os.path.isfile(YOLO_MODEL):
             raise FileNotFoundError(
                 f"Файл модели '{YOLO_MODEL}' не найден. "
-                "На Ubuntu запустите ./run.sh — при первом запуске модель будет создана из yolov8s.pt. "
-                "Либо задайте YOLO_MODEL=yolov8s.pt для автоматической загрузки."
+                "Запустите run.bat (Windows) или ./run.sh (Ubuntu) — при первом запуске модель будет создана. "
+                "Либо задайте YOLO_MODEL=yolov8n.pt для автоматической загрузки."
             )
         self.model = YOLO(YOLO_MODEL)
         logger.info(f"Модель {YOLO_MODEL} загружена")
@@ -179,31 +145,38 @@ class TrafficCounter:
             logger.info(f"Запись видео в файл: {OUTPUT_VIDEO_PATH}")
     
     def process_frame(self, frame):
-        """Обработка одного кадра"""
-        # Детекция объектов
-        results = self.model(frame, conf=CONFIDENCE_THRESHOLD, verbose=False)
+        """Обработка одного кадра: трекинг с сохранением ID (persist=True) и подсчёт пересечений"""
+        results = self.model.track(
+            frame,
+            persist=True,
+            conf=CONFIDENCE_THRESHOLD,
+            verbose=False
+        )
         
         detections = []
         for result in results:
             boxes = result.boxes
-            for box in boxes:
+            ids = boxes.id  # тензор (N,) или None
+            for i, box in enumerate(boxes):
                 class_id = int(box.cls[0])
                 if class_id in VEHICLE_CLASSES:
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     conf = float(box.conf[0])
-                    detections.append((x1, y1, x2, y2, conf, class_id))
+                    if ids is not None and i < len(ids):
+                        try:
+                            track_id = int(ids[i].item() if hasattr(ids[i], 'item') else ids[i])
+                        except (ValueError, TypeError):
+                            track_id = None
+                    else:
+                        track_id = None
+                    detections.append((x1, y1, x2, y2, conf, class_id, track_id))
         
-        # Обновление трекера
         self.tracker.update(detections)
-        
-        # Отрисовка результатов
         annotated_frame = self._draw_results(frame, detections)
-        
         return annotated_frame
     
     def _draw_results(self, frame, detections):
-        """Отрисовка результатов детекции и линии подсчета"""
-        # Рисуем вертикальную линию подсчета
+        """Отрисовка результатов детекции, ID трека и линии подсчета"""
         cv2.line(
             frame,
             (self.tracker.line_position, 0),
@@ -212,42 +185,27 @@ class TrafficCounter:
             LINE_THICKNESS
         )
         
-        # Рисуем детекции
         class_names = {2: 'Car', 3: 'Motorcycle', 5: 'Bus', 7: 'Truck'}
         colors = {2: (255, 0, 0), 3: (0, 255, 0), 5: (0, 0, 255), 7: (255, 255, 0)}
         
-        for x1, y1, x2, y2, conf, class_id in detections:
+        for det in detections:
+            x1, y1, x2, y2, conf, class_id, track_id = det
             color = colors.get(class_id, (255, 255, 255))
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-            
-            # Центр объекта
             center_x = (x1 + x2) // 2
             center_y = (y1 + y2) // 2
             cv2.circle(frame, (center_x, center_y), 5, color, -1)
-            
-            # Метка
-            label = f"{class_names.get(class_id, 'Vehicle')} {conf:.2f}"
+            id_str = f"#{track_id}" if track_id is not None else "?"
+            label = f"{class_names.get(class_id, 'Vehicle')} {id_str} {conf:.2f}"
             cv2.putText(
-                frame,
-                label,
-                (x1, y1 - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                color,
-                2
+                frame, label, (x1, y1 - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2
             )
         
-        # Отображаем счетчик
         cv2.putText(
-            frame,
-            f"Vehicles: {self.tracker.vehicle_count}",
-            (10, 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (0, 255, 0),
-            2
+            frame, f"Vehicles: {self.tracker.vehicle_count}",
+            (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
         )
-        
         return frame
     
     def run(self):

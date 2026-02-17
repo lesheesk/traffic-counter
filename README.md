@@ -78,7 +78,7 @@ For details see [BUILD.md](BUILD.md)
 
 Приложение предназначено для запуска на Ubuntu. Установка и обновления выполняются из командной строки через GitHub.
 
-**Требования к ПК:** AMD Ryzen 5700G, 16 GB ОЗУ, 512 GB SSD (или аналог). Рекомендуется модель YOLOv8: `yolov8s.onnx` или `yolov8m.onnx`.
+**Требования к ПК:** AMD Ryzen 5700G, 16 GB ОЗУ, 512 GB SSD (или аналог). По умолчанию — модель **yolov8n.onnx** (минимальная нагрузка на CPU); при запасе по ресурсам можно задать `YOLO_MODEL=yolov8s.onnx` или `yolov8m.onnx`.
 
 #### Первичная установка
 
@@ -100,7 +100,7 @@ For details see [BUILD.md](BUILD.md)
    chmod +x run.sh
    ./run.sh
    ```
-   При первом запуске скрипт создаст виртуальное окружение, установит зависимости и при отсутствии файла `yolov8s.onnx` — однократно загрузит `yolov8s.pt` и создаст из него ONNX-модель (нужен интернет).
+   При первом запуске скрипт создаст виртуальное окружение, установит зависимости и при отсутствии файла модели (по умолчанию `yolov8n.onnx`) — однократно загрузит соответствующий .pt и создаст ONNX (нужен интернет).
 
 4. (Опционально) Задайте URL камеры перед запуском:
    ```bash
@@ -188,7 +188,7 @@ Where:
 | Variable | Description | Default |
 |------------|----------|--------------|
 | `RTSP_URL` | RTSP stream URL | (see config.py) |
-| `YOLO_MODEL` | YOLOv8 model (n/s/m/l/x) | `yolov8s.onnx` |
+| `YOLO_MODEL` | YOLOv8 model (n/s/m/l/x) | `yolov8n.onnx` |
 | `CONFIDENCE_THRESHOLD` | Detection confidence threshold | `0.5` |
 | `VERTICAL_LINE_POSITION` | X coordinate of vertical counting line | `480` |
 | `LINE_THICKNESS` | Line thickness | `1` |
@@ -236,7 +236,7 @@ The project uses ONNX Runtime to work with YOLOv8 models.
 **Model format:** `.onnx` (not `.pt`)
 
 Available models (from fastest to most accurate):
-- `yolov8n.onnx` - Nano (fastest, lower accuracy)
+- `yolov8n.onnx` - Nano (по умолчанию; быстрее всего, меньше нагрузка на CPU)
 - `yolov8s.onnx` - Small
 - `yolov8m.onnx` - Medium
 - `yolov8l.onnx` - Large
@@ -291,12 +291,12 @@ Or manually: `pip install opencv-python-headless>=4.8.0`. On a server without a 
 - Check RTSP settings on camera
 - Try connecting via VLC to verify
 
-### Problem: Low performance
+### Problem: Low performance / CPU >100% / выпадают кадры
 
 **Solution:**
-- Use lighter YOLOv8 model (yolov8n.onnx)
-- Reduce frame resolution in camera settings
-- Use sub stream (channel 102) instead of main stream
+- По умолчанию используется **yolov8n.onnx** (nano) — минимальная нагрузка на CPU. Если переключили на m/l/x и сервер не успевает, верните nano: `export YOLO_MODEL=yolov8n.onnx` (или в config.py).
+- Уменьшите разрешение потока в настройках камеры или используйте субпоток (канал 102 вместо 101).
+- При необходимости смените модель вручную: `YOLO_MODEL=yolov8s.onnx` или `yolov8m.onnx` при достаточном запасе по CPU.
 
 ### Problem: Inaccurate counting
 
