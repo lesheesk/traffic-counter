@@ -24,7 +24,10 @@ if not hasattr(cv2, "setNumThreads"):
     cv2.setNumThreads = lambda n: None
 
 import numpy as np
-from ultralytics import YOLO
+try:
+    from ultralytics import YOLO
+except ImportError:
+    from ultralytics.models.yolo.model import YOLO
 import logging
 from collections import defaultdict
 from config import (
