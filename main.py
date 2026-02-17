@@ -41,7 +41,7 @@ from config import (
     SHOW_VIDEO,
     SAVE_VIDEO,
     OUTPUT_VIDEO_PATH,
-    LOG_LEVEL
+    LOG_LEVEL,
 )
 
 # Настройка логирования
@@ -114,7 +114,6 @@ class TrafficCounter:
             )
         self.model = YOLO(YOLO_MODEL)
         logger.info(f"Модель {YOLO_MODEL} загружена")
-        
         self.tracker = VehicleTracker()
         self.cap = None
         self.video_writer = None
@@ -131,7 +130,16 @@ class TrafficCounter:
         # Настройка буфера
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         logger.info("Подключение к RTSP потоку установлено")
-        
+        # Размеры из характеристик потока; линия пересечения — первая четверть кадра
+        stream_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        stream_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.tracker.line_position = stream_width // 4
+        logger.info(
+            f"Параметры потока: модель={YOLO_MODEL}, "
+            f"ширина кадра по горизонтали={stream_width} px, высота={stream_height} px, "
+            f"линия пересечения X={self.tracker.line_position} (25% от ширины, первая четверть)"
+        )
+
     def setup_video_writer(self, frame_width, frame_height, fps):
         """Настройка записи видео"""
         if SAVE_VIDEO:
