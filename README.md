@@ -141,7 +141,7 @@ chmod +x setup-display.sh
 1. Установите системные пакеты для GUI OpenCV:
    ```bash
    sudo apt update
-   sudo apt install -y libgtk2.0-dev pkg-config libgl1-mesa-glx libgl1-mesa-dev
+   sudo apt install -y libgtk2.0-dev pkg-config libgl1 libglx-mesa0
    ```
 
 2. В каталоге проекта в виртуальном окружении замените headless на полный OpenCV:

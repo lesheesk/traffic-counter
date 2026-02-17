@@ -7,10 +7,10 @@ set -e
 echo "Настройка отображения видео на экране"
 echo "======================================"
 
-# Системные пакеты (запрос sudo)
-echo "Установка системных пакетов (libgtk2.0-dev, libgl1-mesa-glx)..."
+# Системные пакеты (запрос sudo). libgl1-mesa-glx устарел в Ubuntu 22.04+, используем libgl1 и libglx-mesa0
+echo "Установка системных пакетов (GTK, OpenGL)..."
 sudo apt update
-sudo apt install -y libgtk2.0-dev pkg-config libgl1-mesa-glx libgl1-mesa-dev
+sudo apt install -y libgtk2.0-dev pkg-config libgl1 libglx-mesa0
 
 # Виртуальное окружение
 if [ ! -d "venv" ]; then
