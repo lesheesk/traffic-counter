@@ -19,6 +19,7 @@ traffic-counter/
 ├── requirements.txt     # Python dependencies
 ├── run.bat              # Windows startup script
 ├── run.sh               # Ubuntu/Linux startup script
+├── setup-display.sh     # Включение отображения видео на экране (Ubuntu)
 ├── build.bat            # .exe build script
 ├── BUILD.md             # Build instructions
 └── README.md            # Documentation
@@ -123,6 +124,39 @@ git pull origin main
 rm -f venv/.dependencies_installed
 ./run.sh
 ```
+
+#### Просмотр видеопотока на экране (Ubuntu с монитором)
+
+По умолчанию используется `opencv-python-headless` (без GUI), поэтому окно с видео не открывается. Чтобы видеть поток на экране:
+
+**Вариант 1 — скрипт (рекомендуется):**
+```bash
+chmod +x setup-display.sh
+./setup-display.sh
+./run.sh
+```
+
+**Вариант 2 — вручную:**
+
+1. Установите системные пакеты для GUI OpenCV:
+   ```bash
+   sudo apt update
+   sudo apt install -y libgtk2.0-dev pkg-config libgl1-mesa-glx libgl1-mesa-dev
+   ```
+
+2. В каталоге проекта в виртуальном окружении замените headless на полный OpenCV:
+   ```bash
+   source venv/bin/activate
+   pip uninstall opencv-python-headless -y
+   pip install opencv-python>=4.8.0
+   ```
+
+3. Запустите приложение (отображение по умолчанию включено):
+   ```bash
+   ./run.sh
+   ```
+
+Окно «Traffic Counter» появится на экране; выход по клавише **q**. Для работы без монитора снова установите headless: `pip uninstall opencv-python -y && pip install opencv-python-headless`.
 
 #### Запуск в фоне (опционально)
 
