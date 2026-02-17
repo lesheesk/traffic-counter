@@ -3,6 +3,15 @@
 """
 import os
 import cv2
+
+# opencv-python-headless не имеет imshow — добавляем заглушки, чтобы ultralytics мог импортироваться
+if not hasattr(cv2, "imshow"):
+    cv2.imshow = lambda name, img: None
+if not hasattr(cv2, "waitKey"):
+    cv2.waitKey = lambda delay=0: -1
+if not hasattr(cv2, "destroyAllWindows"):
+    cv2.destroyAllWindows = lambda: None
+
 import numpy as np
 from ultralytics import YOLO
 import logging
