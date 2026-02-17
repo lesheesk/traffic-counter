@@ -10,7 +10,7 @@ RTSP_URL = os.getenv(
 )
 
 # Настройки детекции
-YOLO_MODEL = os.getenv("YOLO_MODEL", "yolov8s.onnx")  # n=легче/быстрее, s, m, l, x=точнее/медленнее
+YOLO_MODEL = os.getenv("YOLO_MODEL", "yolov8n.onnx")  # n=легче/быстрее, s, m, l, x=точнее/медленнее
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))
 VEHICLE_CLASSES = [2,7]  # COCO: 2=car, 3=motorcycle, 5=bus, 7=truck
 
