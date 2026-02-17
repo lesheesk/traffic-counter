@@ -1,35 +1,40 @@
 #!/bin/bash
+# Скрипт запуска приложения на Ubuntu/Linux
 
-# Скрипт для быстрого запуска проекта
+set -e
 
-echo "🚗 Система подсчета транспорта"
-echo "================================"
+echo "Traffic Counting System"
+echo "======================"
 
-# Проверка виртуального окружения
+# Проверка Python
+if ! command -v python3 &> /dev/null; then
+    echo "Ошибка: Python 3 не найден. Установите: sudo apt install python3 python3-venv python3-pip"
+    exit 1
+fi
+
+# Создание виртуального окружения при необходимости
 if [ ! -d "venv" ]; then
-    echo "📦 Создание виртуального окружения..."
+    echo "Создание виртуального окружения..."
     python3 -m venv venv
 fi
 
-# Активация виртуального окружения
-echo "🔧 Активация виртуального окружения..."
+# Активация виртуального окружения и установка зависимостей
 source venv/bin/activate
 
-# Установка зависимостей
-echo "📥 Установка зависимостей..."
-pip install -r requirements.txt
+if [ ! -f "venv/.dependencies_installed" ]; then
+    echo "Установка зависимостей..."
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    touch venv/.dependencies_installed
+fi
 
-# Проверка переменных окружения
-if [ -z "$RTSP_URL" ]; then
-    echo "⚠️  Внимание: RTSP_URL не установлен!"
-    echo "   Установите переменную окружения:"
-    echo "   export RTSP_URL='rtsp://admin:banana38@45.152.169.105:55555//Streaming/Channels/101'"
+# Предупреждение о RTSP_URL
+if [ -z "${RTSP_URL}" ]; then
+    echo "Предупреждение: RTSP_URL не задан!"
+    echo "  Задайте переменную окружения:"
+    echo "  export RTSP_URL=rtsp://admin:password@192.168.1.64:554/Streaming/Channels/101"
     echo ""
 fi
 
-# Запуск приложения
-echo "▶️  Запуск приложения..."
-python main.py
-
-
-
+echo "Запуск приложения..."
+exec python main.py

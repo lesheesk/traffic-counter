@@ -1,70 +1,71 @@
-# Система подсчета транспорта на основе RTSP и YOLOv8
+# Traffic Counting System based on RTSP and YOLOv8
 
-Проект для подсчета проезжающих автомобилей через RTSP поток с камеры Hikvision с использованием YOLOv8 для детекции объектов.
+Project for counting passing vehicles through RTSP stream from Hikvision camera using YOLOv8 for object detection.
 
-## Возможности
+## Features
 
-- 📹 Подключение к RTSP потоку с камеры Hikvision
-- 🚗 Детекция транспортных средств с помощью YOLOv8 (ONNX Runtime)
-- 📊 Подсчет пересечений линии
-- 🎥 Опциональная запись обработанного видео
-- 📦 Сборка в исполняемый .exe файл для Windows (~50-80 МБ)
+- 📹 Connect to RTSP stream from Hikvision camera
+- 🚗 Vehicle detection using YOLOv8 (ONNX Runtime)
+- 📊 Line crossing counting
+- 🎥 Optional processed video recording
+- 📦 Build executable .exe file for Windows (~50-80 MB)
 
-## Структура проекта
+## Project Structure
 
 ```
 traffic-counter/
-├── main.py              # Основной код приложения
-├── config.py            # Конфигурационный файл
-├── requirements.txt     # Python зависимости
-├── run.bat              # Скрипт запуска для Windows
-├── build.bat            # Скрипт сборки .exe файла
-├── BUILD.md             # Инструкция по сборке
-└── README.md           # Документация
+├── main.py              # Main application code
+├── config.py            # Configuration file
+├── requirements.txt     # Python dependencies
+├── run.bat              # Windows startup script
+├── run.sh               # Ubuntu/Linux startup script
+├── build.bat            # .exe build script
+├── BUILD.md             # Build instructions
+└── README.md            # Documentation
 ```
 
-## Требования
+## Requirements
 
-- Python 3.10+ (для разработки)
-- Windows 10+ (для использования .exe файла)
-- Камера Hikvision с RTSP доступом
+- Python 3.10+ (for development)
+- Windows 10+ (for using .exe file) or Ubuntu/Linux (см. ниже)
+- Hikvision camera with RTSP access
 
-## Установка и запуск
+## Installation and Running
 
-### Вариант 1: Через .exe файл (рекомендуется)
+### Option 1: Using .exe file (recommended)
 
-1. **Соберите .exe файл:**
+1. **Build .exe file:**
    ```batch
    build.bat
    ```
    
-2. **Исполняемый файл будет в:** `dist\traffic-counter.exe`
+2. **Executable file will be in:** `dist\traffic-counter.exe`
 
-3. **Запустите:**
-   - Скопируйте `traffic-counter.exe` в удобное место
-   - (Опционально) Создайте файл `config.py` рядом с exe для переопределения настроек
-   - Или настройте переменные окружения
-   - Запустите `traffic-counter.exe`
+3. **Run:**
+   - Copy `traffic-counter.exe` to convenient location
+   - (Optional) Create `config.py` file next to exe to override settings
+   - Or configure environment variables
+   - Run `traffic-counter.exe`
 
-Подробнее см. [BUILD.md](BUILD.md)
+For details see [BUILD.md](BUILD.md)
 
-### Вариант 2: Через Python скрипт
+### Option 2: Using Python script
 
-1. **Установите Python 3.10+** (если еще не установлен):
-   - Скачайте с https://www.python.org/downloads/
-   - При установке отметьте "Add Python to PATH"
+1. **Install Python 3.10+** (if not already installed):
+   - Download from https://www.python.org/downloads/
+   - Check "Add Python to PATH" during installation
 
-2. **Запустите скрипт:**
+2. **Run script:**
    ```batch
    run.bat
    ```
    
-   Скрипт автоматически:
-   - Создаст виртуальное окружение (если нужно)
-   - Установит зависимости
-   - Запустит приложение
+   Script will automatically:
+   - Create virtual environment (if needed)
+   - Install dependencies
+   - Run application
 
-3. **Или вручную:**
+3. **Or manually:**
    ```batch
    python -m venv venv
    venv\Scripts\activate
@@ -72,152 +73,211 @@ traffic-counter/
    python main.py
    ```
 
-## Настройка RTSP URL для Hikvision
+### Option 3: Ubuntu — установка и обновление через GitHub
 
-Формат RTSP URL для камер Hikvision:
+Приложение предназначено для запуска на Ubuntu. Установка и обновления выполняются из командной строки через GitHub.
+
+**Требования к ПК:** AMD Ryzen 5700G, 16 GB ОЗУ, 512 GB SSD (или аналог). Рекомендуется модель YOLOv8: `yolov8s.onnx` или `yolov8m.onnx`.
+
+#### Первичная установка
+
+1. Установите зависимости системы (если ещё не установлены):
+   ```bash
+   sudo apt update
+   sudo apt install -y git python3 python3-venv python3-pip
+   ```
+
+2. Клонируйте репозиторий с GitHub:
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/traffic-counter.git
+   cd traffic-counter
+   ```
+   Замените `YOUR_USERNAME` на ваш логин или организацию в GitHub.
+
+3. Сделайте скрипт запуска исполняемым и запустите приложение:
+   ```bash
+   chmod +x run.sh
+   ./run.sh
+   ```
+   При первом запуске скрипт создаст виртуальное окружение и установит зависимости из `requirements.txt`.
+
+4. (Опционально) Задайте URL камеры перед запуском:
+   ```bash
+   export RTSP_URL="rtsp://admin:password@192.168.1.64:554/Streaming/Channels/101"
+   ./run.sh
+   ```
+
+#### Обновление приложения из GitHub
+
+Чтобы получить последние изменения и перезапустить приложение:
+
+```bash
+cd traffic-counter
+git pull origin main
+./run.sh
+```
+
+Если в репозитории изменился `requirements.txt`, зависимости переустановятся при следующем запуске только после удаления маркера установки. Чтобы принудительно переустановить зависимости:
+
+```bash
+rm -f venv/.dependencies_installed
+./run.sh
+```
+
+#### Запуск в фоне (опционально)
+
+```bash
+nohup ./run.sh > traffic-counter.log 2>&1 &
+```
+
+Остановка: найдите процесс `python main.py` и завершите его (например, `pkill -f "python main.py"` или по PID).
+
+## RTSP URL Configuration for Hikvision
+
+Hikvision camera RTSP URL format:
 ```
 rtsp://username:password@IP_ADDRESS:PORT/Streaming/Channels/CHANNEL
 ```
 
-Примеры:
-- Основной поток: `rtsp://admin:password123@192.168.1.64:554/Streaming/Channels/101`
-- Дополнительный поток: `rtsp://admin:password123@192.168.1.64:554/Streaming/Channels/102`
+Examples:
+- Main stream: `rtsp://admin:password123@192.168.1.64:554/Streaming/Channels/101`
+- Sub stream: `rtsp://admin:password123@192.168.1.64:554/Streaming/Channels/102`
 
-Где:
-- `101` - основной поток (высокое разрешение)
-- `102` - дополнительный поток (низкое разрешение)
+Where:
+- `101` - main stream (high resolution)
+- `102` - sub stream (low resolution)
 
-## Конфигурация
+## Configuration
 
-### Переменные окружения
+### Environment Variables
 
-| Переменная | Описание | По умолчанию |
+| Variable | Description | Default |
 |------------|----------|--------------|
-| `RTSP_URL` | URL RTSP потока | (см. config.py) |
-| `YOLO_MODEL` | Модель YOLOv8 (n/s/m/l/x) | `yolov8s.onnx` |
-| `CONFIDENCE_THRESHOLD` | Порог уверенности детекции | `0.5` |
-| `VERTICAL_LINE_POSITION` | X-координата вертикальной линии подсчета | `480` |
-| `LINE_THICKNESS` | Толщина линии | `1` |
-| `COUNTING_DIRECTION` | Направление подсчета (left_to_right/right_to_left) | `left_to_right` |
-| `SHOW_VIDEO` | Показывать видео окно | `true` |
-| `SAVE_VIDEO` | Сохранять видео | `false` |
-| `OUTPUT_VIDEO_PATH` | Путь к выходному видео | `output.avi` |
-| `LOG_LEVEL` | Уровень логирования | `INFO` |
+| `RTSP_URL` | RTSP stream URL | (see config.py) |
+| `YOLO_MODEL` | YOLOv8 model (n/s/m/l/x) | `yolov8s.onnx` |
+| `CONFIDENCE_THRESHOLD` | Detection confidence threshold | `0.5` |
+| `VERTICAL_LINE_POSITION` | X coordinate of vertical counting line | `480` |
+| `LINE_THICKNESS` | Line thickness | `1` |
+| `COUNTING_DIRECTION` | Counting direction (left_to_right/right_to_left) | `left_to_right` |
+| `SHOW_VIDEO` | Show video window | `true` |
+| `SAVE_VIDEO` | Save video | `false` |
+| `OUTPUT_VIDEO_PATH` | Output video path | `output.avi` |
+| `LOG_LEVEL` | Logging level | `INFO` |
 
-### Настройка через config.py
+### Configuration via config.py
 
-Отредактируйте файл `config.py` для изменения настроек по умолчанию.
+Edit `config.py` file to change default settings.
 
-### Классы транспортных средств
+### Vehicle Classes
 
-По умолчанию отслеживаются следующие классы COCO:
-- `2` - Car (автомобиль)
-- `3` - Motorcycle (мотоцикл)
-- `5` - Bus (автобус)
-- `7` - Truck (грузовик)
+By default, the following COCO classes are tracked:
+- `2` - Car
+- `3` - Motorcycle
+- `5` - Bus
+- `7` - Truck
 
-Настройка в `config.py`: `VEHICLE_CLASSES = [2, 7]`
+Configuration in `config.py`: `VEHICLE_CLASSES = [2, 7]`
 
-## Использование
+## Usage
 
-1. **Запустите приложение** (см. раздел "Установка и запуск")
+1. **Run application** (see "Installation and Running" section)
 
-2. **Настройте линию подсчета:**
-   - Измените `VERTICAL_LINE_POSITION` в конфигурации для установки X-координаты линии
-   - Линия отображается зеленым цветом на видео
+2. **Configure counting line:**
+   - Change `VERTICAL_LINE_POSITION` in configuration to set X coordinate of line
+   - Line is displayed in green on video
 
-3. **Наблюдайте за подсчетом:**
-   - Детектированные объекты отображаются с рамками
-   - Центр объекта отмечен точкой
-   - Счетчик обновляется при пересечении линии
+3. **Observe counting:**
+   - Detected objects are displayed with bounding boxes
+   - Object center is marked with a dot
+   - Counter updates when line is crossed
 
-4. **Остановка:**
-   - Нажмите `q` в окне видео (если `SHOW_VIDEO=true`)
-   - Или `Ctrl+C` в терминале
+4. **Stop:**
+   - Press `q` in video window (if `SHOW_VIDEO=true`)
+   - Or `Ctrl+C` in terminal
 
-## Модели YOLOv8
+## YOLOv8 Models
 
-Проект использует ONNX Runtime для работы с моделями YOLOv8.
+The project uses ONNX Runtime to work with YOLOv8 models.
 
-**Формат моделей:** `.onnx` (не `.pt`)
+**Model format:** `.onnx` (not `.pt`)
 
-Доступные модели (от быстрой к точной):
-- `yolov8n.onnx` - Nano (самая быстрая, меньше точность)
+Available models (from fastest to most accurate):
+- `yolov8n.onnx` - Nano (fastest, lower accuracy)
 - `yolov8s.onnx` - Small
 - `yolov8m.onnx` - Medium
 - `yolov8l.onnx` - Large
-- `yolov8x.onnx` - XLarge (самая точная, медленнее)
+- `yolov8x.onnx` - XLarge (most accurate, slower)
 
-### Конвертация моделей из .pt в .onnx
+### Converting models from .pt to .onnx
 
-Если у вас есть модели в формате `.pt`, их нужно конвертировать:
+If you have models in `.pt` format, you need to convert them:
 
-1. **Временно установите ultralytics:**
+1. **Temporarily install ultralytics:**
    ```batch
    pip install ultralytics
    ```
 
-2. **Запустите скрипт конвертации:**
+2. **Run conversion script:**
    ```batch
    python convert_to_onnx.py
    ```
 
-3. **После конвертации можно удалить ultralytics:**
+3. **After conversion you can remove ultralytics:**
    ```batch
    pip uninstall ultralytics torch torchvision -y
    ```
 
-Подробнее см. [MIGRATION_TO_ONNX.md](MIGRATION_TO_ONNX.md)
+For details see [MIGRATION_TO_ONNX.md](MIGRATION_TO_ONNX.md)
 
-## Сборка исполняемого файла
+## Building Executable File
 
-Для создания .exe файла, который можно запускать на любом Windows компьютере без установки Python:
+To create .exe file that can be run on any Windows computer without installing Python:
 
-1. Запустите: `build.bat`
-2. Исполняемый файл будет в: `dist\traffic-counter.exe`
+1. Run: `build.bat`
+2. Executable file will be in: `dist\traffic-counter.exe`
 
-Подробная инструкция: [BUILD.md](BUILD.md)
+Detailed instructions: [BUILD.md](BUILD.md)
 
-## Устранение неполадок
+## Troubleshooting
 
-### Проблема: Не удается подключиться к RTSP потоку
+### Problem: Cannot connect to RTSP stream
 
-**Решение:**
-- Проверьте правильность URL, логина и пароля
-- Убедитесь, что камера доступна в сети
-- Проверьте настройки RTSP на камере
-- Попробуйте подключиться через VLC для проверки
+**Solution:**
+- Check URL, username and password correctness
+- Ensure camera is accessible on network
+- Check RTSP settings on camera
+- Try connecting via VLC to verify
 
-### Проблема: Низкая производительность
+### Problem: Low performance
 
-**Решение:**
-- Используйте более легкую модель YOLOv8 (yolov8n.pt)
-- Уменьшите разрешение кадра в настройках камеры
-- Используйте дополнительный поток (канал 102) вместо основного
+**Solution:**
+- Use lighter YOLOv8 model (yolov8n.onnx)
+- Reduce frame resolution in camera settings
+- Use sub stream (channel 102) instead of main stream
 
-### Проблема: Неточный подсчет
+### Problem: Inaccurate counting
 
-**Решение:**
-- Настройте `VERTICAL_LINE_POSITION` для оптимального расположения
-- Увеличьте `CONFIDENCE_THRESHOLD` для фильтрации ложных срабатываний
-- Используйте более точную модель YOLOv8 (yolov8m.pt или выше)
+**Solution:**
+- Configure `VERTICAL_LINE_POSITION` for optimal placement
+- Increase `CONFIDENCE_THRESHOLD` to filter false positives
+- Use more accurate YOLOv8 model (yolov8m.onnx or higher)
 
-## Логирование
+## Logging
 
-Логи выводятся в консоль с информацией о:
-- Подключении к RTSP потоку
-- Пересечениях линии автомобилями
-- Общем количестве обработанных кадров
-- Ошибках и предупреждениях
+Logs are output to console with information about:
+- RTSP stream connection
+- Line crossings by vehicles
+- Total number of processed frames
+- Errors and warnings
 
-## Лицензия
+## License
 
-Этот проект предоставляется "как есть" для образовательных целей.
+This project is provided "as is" for educational purposes.
 
-## Поддержка
+## Support
 
-При возникновении проблем проверьте:
-1. Логи приложения
-2. Настройки RTSP камеры
-3. Сетевое подключение
-4. Версии зависимостей
+If problems occur, check:
+1. Application logs
+2. RTSP camera settings
+3. Network connection
+4. Dependency versions
