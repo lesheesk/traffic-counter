@@ -240,6 +240,15 @@ Detailed instructions: [BUILD.md](BUILD.md)
 
 ## Troubleshooting
 
+### Problem: ImportError or crash when importing cv2 on Ubuntu (headless/server)
+
+**Solution:** The project uses `opencv-python-headless` (no GUI libraries required). If you still have the old environment, reinstall dependencies:
+```bash
+rm -f venv/.dependencies_installed
+./run.sh
+```
+Or manually: `pip install opencv-python-headless>=4.8.0`. On a server without a display, set `SHOW_VIDEO=false` so the app does not try to open a window.
+
 ### Problem: Cannot connect to RTSP stream
 
 **Solution:**

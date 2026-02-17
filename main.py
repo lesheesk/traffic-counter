@@ -1,6 +1,7 @@
 """
 Система подсчета транспорта на основе RTSP потока и YOLOv8
 """
+import os
 import cv2
 import numpy as np
 from ultralytics import YOLO
@@ -241,8 +242,9 @@ class TrafficCounter:
                 if self.video_writer:
                     self.video_writer.write(processed_frame)
                 
-                # Отображение
-                if SHOW_VIDEO:
+                # Отображение (только при наличии дисплея на Linux)
+                show_window = SHOW_VIDEO and os.environ.get('DISPLAY')
+                if show_window:
                     cv2.imshow('Traffic Counter', processed_frame)
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         logger.info("Остановка по запросу пользователя")
