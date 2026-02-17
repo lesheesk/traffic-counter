@@ -112,7 +112,7 @@ class TrafficCounter:
                 "Запустите run.bat (Windows) или ./run.sh (Ubuntu) — при первом запуске модель будет создана. "
                 "Либо задайте YOLO_MODEL=yolov8n.pt для автоматической загрузки."
             )
-        self.model = YOLO(YOLO_MODEL)
+        self.model = YOLO(YOLO_MODEL, task="detect")
         logger.info(f"Модель {YOLO_MODEL} загружена")
         self.tracker = VehicleTracker()
         self.cap = None
