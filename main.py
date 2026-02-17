@@ -4,13 +4,22 @@
 import os
 import cv2
 
-# opencv-python-headless не имеет imshow — добавляем заглушки, чтобы ultralytics мог импортироваться
+# opencv-python-headless может не иметь GUI и части констант — добавляем заглушки для ultralytics
 if not hasattr(cv2, "imshow"):
     cv2.imshow = lambda name, img: None
 if not hasattr(cv2, "waitKey"):
     cv2.waitKey = lambda delay=0: -1
 if not hasattr(cv2, "destroyAllWindows"):
     cv2.destroyAllWindows = lambda: None
+# Константы для imread/imwrite (ultralytics patches.py)
+if not hasattr(cv2, "IMREAD_COLOR"):
+    cv2.IMREAD_COLOR = 1
+if not hasattr(cv2, "IMREAD_GRAYSCALE"):
+    cv2.IMREAD_GRAYSCALE = 0
+if not hasattr(cv2, "IMREAD_UNCHANGED"):
+    cv2.IMREAD_UNCHANGED = -1
+if not hasattr(cv2, "IMWRITE_JPEG_QUALITY"):
+    cv2.IMWRITE_JPEG_QUALITY = 1
 
 import numpy as np
 from ultralytics import YOLO
