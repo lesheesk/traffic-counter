@@ -20,6 +20,8 @@ if not hasattr(cv2, "IMREAD_UNCHANGED"):
     cv2.IMREAD_UNCHANGED = -1
 if not hasattr(cv2, "IMWRITE_JPEG_QUALITY"):
     cv2.IMWRITE_JPEG_QUALITY = 1
+if not hasattr(cv2, "setNumThreads"):
+    cv2.setNumThreads = lambda n: None
 
 import numpy as np
 from ultralytics import YOLO
