@@ -28,6 +28,20 @@ if [ ! -f "venv/.dependencies_installed" ]; then
     touch venv/.dependencies_installed
 fi
 
+# Создание ONNX-модели из .pt, если файла нет (однократно)
+MODEL="${YOLO_MODEL:-yolov8s.onnx}"
+if [[ "$MODEL" == *.onnx ]] && [ ! -f "$MODEL" ]; then
+    BASE="${MODEL%.onnx}"
+    echo "Модель $MODEL не найдена. Создание из $BASE.pt (однократная загрузка)..."
+    pip install torch --quiet
+    python -c "
+from ultralytics import YOLO
+m = YOLO('$BASE.pt')
+m.export(format='onnx')
+"
+    echo "Готово: $MODEL"
+fi
+
 # Предупреждение о RTSP_URL
 if [ -z "${RTSP_URL}" ]; then
     echo "Предупреждение: RTSP_URL не задан!"

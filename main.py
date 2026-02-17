@@ -117,12 +117,19 @@ class TrafficCounter:
     
     def __init__(self):
         logger.info("Инициализация модели YOLOv8...")
+        if YOLO_MODEL.endswith('.onnx') and not os.path.isfile(YOLO_MODEL):
+            raise FileNotFoundError(
+                f"Файл модели '{YOLO_MODEL}' не найден. "
+                "На Ubuntu запустите ./run.sh — при первом запуске модель будет создана из yolov8s.pt. "
+                "Либо задайте YOLO_MODEL=yolov8s.pt для автоматической загрузки."
+            )
         self.model = YOLO(YOLO_MODEL)
         logger.info(f"Модель {YOLO_MODEL} загружена")
         
         self.tracker = VehicleTracker()
         self.cap = None
         self.video_writer = None
+        self._window_available = None  # None=не проверяли, True/False после первой попытки
         
     def connect_rtsp(self):
         """Подключение к RTSP потоку"""
@@ -242,13 +249,26 @@ class TrafficCounter:
                 if self.video_writer:
                     self.video_writer.write(processed_frame)
                 
-                # Отображение (только при наличии дисплея на Linux)
-                show_window = SHOW_VIDEO and os.environ.get('DISPLAY')
-                if show_window:
-                    cv2.imshow('Traffic Counter', processed_frame)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        logger.info("Остановка по запросу пользователя")
-                        break
+                # Отображение окна (opencv-python-headless не поддерживает GUI — пропускаем при ошибке)
+                if SHOW_VIDEO:
+                    if self._window_available is False:
+                        pass  # уже выяснили, что окно недоступно
+                    elif self._window_available is True:
+                        cv2.imshow('Traffic Counter', processed_frame)
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            logger.info("Остановка по запросу пользователя")
+                            break
+                    else:
+                        try:
+                            cv2.imshow('Traffic Counter', processed_frame)
+                            self._window_available = True
+                            if cv2.waitKey(1) & 0xFF == ord('q'):
+                                logger.info("Остановка по запросу пользователя")
+                                break
+                        except cv2.error:
+                            self._window_available = False
+                            if frame_count == 0:
+                                logger.info("Окно видео недоступно (headless/без GUI), работаем без отображения")
                 
                 frame_count += 1
                 if frame_count % 100 == 0:
@@ -268,7 +288,10 @@ class TrafficCounter:
             self.cap.release()
         if self.video_writer:
             self.video_writer.release()
-        cv2.destroyAllWindows()
+        try:
+            cv2.destroyAllWindows()
+        except cv2.error:
+            pass
         logger.info(f"Итоговое количество автомобилей: {self.tracker.vehicle_count}")
 
 
