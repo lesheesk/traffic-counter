@@ -1,35 +1,43 @@
 """
-Система подсчета транспорта на основе RTSP потока и YOLOv8
+Система подсчета транспорта на основе RTSP потока и YOLOv8.
+Целевая платформа: Windows 10/11.
 """
 import os
+import sys
 import cv2
-
-# opencv-python-headless может не иметь GUI и части констант — добавляем заглушки для ultralytics
-if not hasattr(cv2, "imshow"):
-    cv2.imshow = lambda name, img: None
-if not hasattr(cv2, "waitKey"):
-    cv2.waitKey = lambda delay=0: -1
-if not hasattr(cv2, "destroyAllWindows"):
-    cv2.destroyAllWindows = lambda: None
-# Константы для imread/imwrite (ultralytics patches.py)
-if not hasattr(cv2, "IMREAD_COLOR"):
-    cv2.IMREAD_COLOR = 1
-if not hasattr(cv2, "IMREAD_GRAYSCALE"):
-    cv2.IMREAD_GRAYSCALE = 0
-if not hasattr(cv2, "IMREAD_UNCHANGED"):
-    cv2.IMREAD_UNCHANGED = -1
-if not hasattr(cv2, "IMWRITE_JPEG_QUALITY"):
-    cv2.IMWRITE_JPEG_QUALITY = 1
-if not hasattr(cv2, "setNumThreads"):
-    cv2.setNumThreads = lambda n: None
-
 import numpy as np
+
+# Трекер Ultralytics использует lap; на Windows lap часто не собирается — подменяем на scipy
+import scipy.optimize
+_linear_sum_assignment = scipy.optimize.linear_sum_assignment
+
+class _LapJv:
+    @staticmethod
+    def lapjv(cost_matrix, extend_cost=False, cost_limit=None):
+        r_ind, c_ind = _linear_sum_assignment(cost_matrix)
+        n = cost_matrix.shape[0]
+        x = np.full(n, -1, dtype=np.int64)
+        y = np.full(cost_matrix.shape[1] if cost_matrix.ndim == 2 else n, -1, dtype=np.int64)
+        for i, j in zip(r_ind, c_ind):
+            if cost_limit is None or cost_matrix[i, j] <= cost_limit:
+                x[i], y[j] = j, i
+        return np.zeros(1), x, y
+
+lap = type(sys)("lap")
+lap.lapjv = _LapJv.lapjv
+sys.modules["lap"] = lap
+
 try:
     from ultralytics import YOLO
 except ImportError:
     from ultralytics.models.yolo.model import YOLO
 import logging
 from collections import defaultdict
+from datetime import datetime, date
+from pathlib import Path
+
+import requests
+
 from config import (
     RTSP_URL,
     YOLO_MODEL,
@@ -42,6 +50,9 @@ from config import (
     SAVE_VIDEO,
     OUTPUT_VIDEO_PATH,
     LOG_LEVEL,
+    STATS_OUTPUT_DIR,
+    TELEGRAM_BOT_TOKEN,
+    TELEGRAM_CHAT_ID,
 )
 
 # Настройка логирования
@@ -50,6 +61,69 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Режим работы: 7:00–20:00
+HOUR_START, HOUR_END = 7, 20
+
+
+class DailyStats:
+    """
+    Почасовой учёт машин (7:00–20:00), сохранение отчёта за день в файл и отправка в Telegram.
+    """
+    def __init__(self):
+        self._hourly = defaultdict(int)  # hour -> count
+        self._current_date = date.today()
+        self._finalized_dates = set()  # даты, по которым уже сохранён и отправлен отчёт
+        self._output_dir = Path(STATS_OUTPUT_DIR)
+        self._output_dir.mkdir(parents=True, exist_ok=True)
+
+    def add(self, hour: int, count: int):
+        if HOUR_START <= hour < HOUR_END:
+            self._hourly[hour] += count
+
+    def finalize_day(self):
+        """Записать отчёт за текущий день в файл и отправить в Telegram (если настроен)."""
+        today = date.today()
+        if self._current_date != today:
+            self._current_date = today
+        if self._current_date in self._finalized_dates:
+            return
+        self._write_and_send(self._current_date, dict(self._hourly))
+        self._finalized_dates.add(self._current_date)
+        self._hourly = defaultdict(int)
+
+    def _write_and_send(self, day: date, hourly: dict):
+        total = sum(hourly.values())
+        lines = [f"Дата: {day}", ""]
+        for h in range(HOUR_START, HOUR_END):
+            lines.append(f"{h:02d}:00-{h+1:02d}:00: {hourly.get(h, 0)}")
+        lines.append("")
+        lines.append(f"Итого за день: {total}")
+        text = "\n".join(lines)
+        path = self._output_dir / f"traffic_{day}.txt"
+        path.write_text(text, encoding="utf-8")
+        logger.info("Отчёт за день сохранён: %s", path)
+        if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+            self._send_telegram(path, day, total)
+        else:
+            logger.debug("Telegram не настроен (TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID пусты)")
+
+    def _send_telegram(self, file_path: Path, day: date, total: int):
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
+        try:
+            with open(file_path, "rb") as f:
+                r = requests.post(
+                    url,
+                    data={"chat_id": TELEGRAM_CHAT_ID, "caption": f"Подсчёт за {day}. Итого: {total}"},
+                    files={"document": (file_path.name, f, "text/plain")},
+                    timeout=30,
+                )
+            if not r.ok:
+                logger.warning("Telegram sendDocument: %s %s", r.status_code, r.text)
+            else:
+                logger.info("Отчёт отправлен в Telegram (chat_id=%s)", TELEGRAM_CHAT_ID)
+        except Exception as e:
+            logger.warning("Ошибка отправки в Telegram: %s", e)
 
 
 class VehicleTracker:
@@ -101,43 +175,107 @@ class VehicleTracker:
             }
 
 
+# Список моделей для переключения по клавише W
+MODEL_OPTIONS = ["yolov8n.onnx", "yolov8s.onnx", "yolov8m.onnx"]
+
+
 class TrafficCounter:
     """Основной класс для подсчета транспорта"""
     
     def __init__(self):
         logger.info("Инициализация модели YOLOv8...")
-        if YOLO_MODEL.endswith('.onnx') and not os.path.isfile(YOLO_MODEL):
+        self._rtsp_url = RTSP_URL
+        self._model_list = [m for m in MODEL_OPTIONS if os.path.isfile(m)]
+        if not self._model_list:
+            self._model_list = MODEL_OPTIONS.copy()
+        self._model_index = 0
+        if YOLO_MODEL in self._model_list:
+            self._model_index = self._model_list.index(YOLO_MODEL)
+        self._current_model = self._model_list[self._model_index]
+        if self._current_model.endswith('.onnx') and not os.path.isfile(self._current_model):
             raise FileNotFoundError(
-                f"Файл модели '{YOLO_MODEL}' не найден. "
-                "Запустите run.bat (Windows) или ./run.sh (Ubuntu) — при первом запуске модель будет создана. "
-                "Либо задайте YOLO_MODEL=yolov8n.pt для автоматической загрузки."
+                f"Файл модели '{self._current_model}' не найден. "
+                "Запустите run.bat (Windows) или ./run.sh (Ubuntu) — при первом запуске модель будет создана."
             )
-        self.model = YOLO(YOLO_MODEL, task="detect")
-        logger.info(f"Модель {YOLO_MODEL} загружена")
+        self.model = YOLO(self._current_model, task="detect")
+        logger.info(f"Модель {self._current_model} загружена")
         self.tracker = VehicleTracker()
+        self._daily_stats = DailyStats()
+        self._last_count = 0
+        self._last_hour = datetime.now().hour
         self.cap = None
         self.video_writer = None
-        self._window_available = None  # None=не проверяли, True/False после первой попытки
+
+    def _get_stream_channel(self):
+        """Возвращает '101' или '102' из текущего RTSP URL"""
+        if "/Channels/101" in self._rtsp_url:
+            return "101"
+        if "/Channels/102" in self._rtsp_url:
+            return "102"
+        last = self._rtsp_url.rstrip("/").split("/")[-1]
+        return last if last in ("101", "102") else "?"
+
+    def _switch_model(self):
+        """Переключение на следующую модель по клавише W"""
+        self._model_index = (self._model_index + 1) % len(self._model_list)
+        new_model = self._model_list[self._model_index]
+        if new_model.endswith('.onnx') and not os.path.isfile(new_model):
+            logger.warning(f"Модель {new_model} не найдена, пропуск")
+            return
+        self._current_model = new_model
+        self.model = YOLO(self._current_model, task="detect")
+        self.tracker = VehicleTracker()
+        self._last_count = 0
+        logger.info(f"Модель переключена на {self._current_model}")
+
+    def _switch_stream(self):
+        """Переключение поток 101 <-> 102 по клавише E"""
+        old_url = self._rtsp_url
+        if "/Channels/101" in self._rtsp_url:
+            self._rtsp_url = self._rtsp_url.replace("/Channels/101", "/Channels/102")
+        elif "/Channels/102" in self._rtsp_url:
+            self._rtsp_url = self._rtsp_url.replace("/Channels/102", "/Channels/101")
+        else:
+            parts = self._rtsp_url.rstrip("/").split("/")
+            if parts[-1] == "101":
+                parts[-1] = "102"
+            else:
+                parts[-1] = "101"
+            self._rtsp_url = "/".join(parts)
+        try:
+            if self.cap:
+                self.cap.release()
+                self.cap = None
+            logger.info(f"Переключение на поток: {self._get_stream_channel()}")
+            self.connect_rtsp()
+        except Exception as e:
+            logger.warning(f"Не удалось переключить поток: {e}. Возврат к предыдущему URL.")
+            self._rtsp_url = old_url
+            if self.cap is None and old_url:
+                try:
+                    self.connect_rtsp()
+                except Exception:
+                    pass
         
     def connect_rtsp(self):
         """Подключение к RTSP потоку"""
-        logger.info(f"Подключение к RTSP потоку: {RTSP_URL}")
-        self.cap = cv2.VideoCapture(RTSP_URL)
+        logger.info(f"Подключение к RTSP потоку: {self._rtsp_url}")
+        self.cap = cv2.VideoCapture(self._rtsp_url)
         
         if not self.cap.isOpened():
-            raise ConnectionError(f"Не удалось подключиться к RTSP потоку: {RTSP_URL}")
+            raise ConnectionError(f"Не удалось подключиться к RTSP потоку: {self._rtsp_url}")
         
         # Настройка буфера
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         logger.info("Подключение к RTSP потоку установлено")
-        # Размеры из характеристик потока; линия пересечения — первая четверть кадра
+        # Размеры из характеристик потока; при смене канала разрешение меняется — линию всегда пересчитываем
         stream_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         stream_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.tracker.line_position = stream_width // 4
+        self.tracker.line_position = stream_width // 3
         logger.info(
-            f"Параметры потока: модель={YOLO_MODEL}, "
-            f"ширина кадра по горизонтали={stream_width} px, высота={stream_height} px, "
-            f"линия пересечения X={self.tracker.line_position} (25% от ширины, первая четверть)"
+            f"Параметры потока: модель={self._current_model}, канал={self._get_stream_channel()}, "
+            f"ширина={stream_width} px, высота={stream_height} px, "
+            f"линия X={self.tracker.line_position} (1/3 от ширины)"
         )
 
     def setup_video_writer(self, frame_width, frame_height, fps):
@@ -180,6 +318,13 @@ class TrafficCounter:
                     detections.append((x1, y1, x2, y2, conf, class_id, track_id))
         
         self.tracker.update(detections)
+        # Почасовой учёт (7:00–20:00) для сохранения в файл и Telegram
+        new_count = self.tracker.vehicle_count
+        if new_count > self._last_count:
+            hour = datetime.now().hour
+            if HOUR_START <= hour < HOUR_END:
+                self._daily_stats.add(hour, new_count - self._last_count)
+        self._last_count = new_count
         annotated_frame = self._draw_results(frame, detections)
         return annotated_frame
     
@@ -214,6 +359,15 @@ class TrafficCounter:
             frame, f"Vehicles: {self.tracker.vehicle_count}",
             (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
         )
+        # Текущая модель и поток, подсказки по клавишам W / E
+        cv2.putText(
+            frame, f"Model: {self._current_model} [W]",
+            (10, 65), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2
+        )
+        cv2.putText(
+            frame, f"Stream: {self._get_stream_channel()} [E]",
+            (10, 95), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2
+        )
         return frame
     
     def run(self):
@@ -223,6 +377,8 @@ class TrafficCounter:
             
             frame_count = 0
             while True:
+                if self.cap is None:
+                    self.connect_rtsp()
                 ret, frame = self.cap.read()
                 
                 if not ret:
@@ -238,30 +394,26 @@ class TrafficCounter:
                 if self.video_writer:
                     self.video_writer.write(processed_frame)
                 
-                # Отображение окна (opencv-python-headless не поддерживает GUI — пропускаем при ошибке)
+                # Отображение окна и обработка клавиш W / E / Q (Windows 10/11)
                 if SHOW_VIDEO:
-                    if self._window_available is False:
-                        pass  # уже выяснили, что окно недоступно
-                    elif self._window_available is True:
-                        cv2.imshow('Traffic Counter', processed_frame)
-                        if cv2.waitKey(1) & 0xFF == ord('q'):
-                            logger.info("Остановка по запросу пользователя")
-                            break
-                    else:
-                        try:
-                            cv2.imshow('Traffic Counter', processed_frame)
-                            self._window_available = True
-                            if cv2.waitKey(1) & 0xFF == ord('q'):
-                                logger.info("Остановка по запросу пользователя")
-                                break
-                        except cv2.error:
-                            self._window_available = False
-                            if frame_count == 0:
-                                logger.info("Окно видео недоступно (headless/без GUI), работаем без отображения")
+                    cv2.imshow('Traffic Counter', processed_frame)
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord('q'):
+                        logger.info("Остановка по запросу пользователя")
+                        break
+                    if key == ord('w'):
+                        self._switch_model()
+                    if key == ord('e'):
+                        self._switch_stream()
                 
                 frame_count += 1
                 if frame_count % 100 == 0:
                     logger.info(f"Обработано кадров: {frame_count}, Всего автомобилей: {self.tracker.vehicle_count}")
+                # В 20:00 — сохранить отчёт за день и отправить в Telegram
+                now_hour = datetime.now().hour
+                if now_hour >= HOUR_END and self._last_hour < HOUR_END:
+                    self._daily_stats.finalize_day()
+                self._last_hour = now_hour
         
         except KeyboardInterrupt:
             logger.info("Остановка по сигналу прерывания")
@@ -277,10 +429,8 @@ class TrafficCounter:
             self.cap.release()
         if self.video_writer:
             self.video_writer.release()
-        try:
-            cv2.destroyAllWindows()
-        except cv2.error:
-            pass
+        cv2.destroyAllWindows()
+        self._daily_stats.finalize_day()
         logger.info(f"Итоговое количество автомобилей: {self.tracker.vehicle_count}")
 
 

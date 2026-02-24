@@ -6,11 +6,11 @@ import os
 # Настройки RTSP потока
 RTSP_URL = os.getenv(
     "RTSP_URL",
-    "rtsp://admin:Banana38@45.152.169.105:55556/Streaming/Channels/102"
+    "rtsp://admin:Banana38@45.152.169.105:55556/Streaming/Channels/101"
 )
 
 # Настройки детекции
-YOLO_MODEL = os.getenv("YOLO_MODEL", "yolov8m.onnx")  # n=легче/быстрее, s, m, l, x=точнее/медленнее
+YOLO_MODEL = os.getenv("YOLO_MODEL", "yolov8n.onnx")  # n=быстрее (вариант 1), s, m, l, x=точнее/медленнее
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))
 VEHICLE_CLASSES = [2,7]  # COCO: 2=car, 3=motorcycle, 5=bus, 7=truck
 
@@ -31,4 +31,9 @@ OUTPUT_VIDEO_PATH = os.getenv("OUTPUT_VIDEO_PATH", "output.avi")
 
 # Настройки логирования
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+# Сохранение подсчёта за день (работа 7:00–20:00)
+STATS_OUTPUT_DIR = os.getenv("STATS_OUTPUT_DIR", "stats")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")  # Токен бота от @BotFather
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")     # chat_id получателя (для @leshee — узнать через getUpdates после того как он напишет боту)
 

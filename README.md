@@ -1,6 +1,8 @@
 # Traffic Counting System based on RTSP and YOLOv8
 
-Project for counting passing vehicles through RTSP stream from Hikvision camera using YOLOv8 for object detection.
+Подсчёт проезжающего транспорта по RTSP-потоку камеры Hikvision с детекцией YOLOv8.
+
+**Платформа:** только Windows 10/11.
 
 ## Features
 
@@ -18,8 +20,7 @@ traffic-counter/
 ├── config.py            # Configuration file
 ├── requirements.txt     # Python dependencies
 ├── run.bat              # Windows startup script
-├── run.sh               # Ubuntu/Linux startup script
-├── setup-display.sh     # Включение отображения видео на экране (Ubuntu)
+├── run.sh               # (опционально) Linux
 ├── build.bat            # .exe build script
 ├── BUILD.md             # Build instructions
 └── README.md            # Documentation
@@ -27,28 +28,27 @@ traffic-counter/
 
 ## Requirements
 
-- Python 3.10+ (for development)
-- Windows 10+ (for using .exe file) or Ubuntu/Linux (см. ниже)
-- Hikvision camera with RTSP access
+- **Windows 10 или 11**
+- Python 3.10+ (для разработки и сборки .exe)
+- Камера Hikvision с доступом по RTSP
 
 ## Installation and Running
 
-### Option 1: Using .exe file (recommended)
+### Option 1: Using .exe file (перенос на другой ПК)
 
-1. **Build .exe file:**
+1. **Сборка:**
    ```batch
    build.bat
    ```
-   
-2. **Executable file will be in:** `dist\traffic-counter.exe`
+   Требуется Python и зависимости; сборка может занять несколько минут.
 
-3. **Run:**
-   - Copy `traffic-counter.exe` to convenient location
-   - (Optional) Create `config.py` file next to exe to override settings
-   - Or configure environment variables
-   - Run `traffic-counter.exe`
+2. **Результат:** папка `dist\traffic-counter\` с файлом `traffic-counter.exe` и библиотеками.
 
-For details see [BUILD.md](BUILD.md)
+3. **Перенос на другой компьютер:**
+   - Скопируйте **всю папку** `dist\traffic-counter\` на целевой ПК (Python на нём не нужен).
+   - Положите в эту же папку файл модели, например `yolov8m.onnx` (или задайте переменную окружения `YOLO_MODEL`).
+   - При необходимости положите туда же `config.py` для своих настроек RTSP и т.д.
+   - Запустите `traffic-counter.exe`.
 
 ### Option 2: Using Python script
 
@@ -74,9 +74,9 @@ For details see [BUILD.md](BUILD.md)
    python main.py
    ```
 
-### Option 3: Ubuntu — установка и обновление через GitHub
+### Option 3 (опционально): Ubuntu / Linux
 
-Приложение предназначено для запуска на Ubuntu. Установка и обновления выполняются из командной строки через GitHub.
+Ниже — инструкции для запуска на Linux (основная платформа — Windows 10/11). Установка и обновления выполняются из командной строки через GitHub.
 
 **Требования к ПК:** AMD Ryzen 5700G, 16 GB ОЗУ, 512 GB SSD (или аналог). По умолчанию — модель **yolov8n.onnx** (минимальная нагрузка на CPU); при запасе по ресурсам можно задать `YOLO_MODEL=yolov8s.onnx` или `yolov8m.onnx`.
 
@@ -197,6 +197,13 @@ Where:
 | `SAVE_VIDEO` | Save video | `false` |
 | `OUTPUT_VIDEO_PATH` | Output video path | `output.avi` |
 | `LOG_LEVEL` | Logging level | `INFO` |
+| `STATS_OUTPUT_DIR` | Каталог для отчётов за день | `stats` |
+| `TELEGRAM_BOT_TOKEN` | Токен бота для отправки отчёта в Telegram | (пусто) |
+| `TELEGRAM_CHAT_ID` | ID чата получателя (например для @leshee) | (пусто) |
+
+### Сохранение подсчёта за день и Telegram
+
+Программа ведёт почасовой учёт (7:00–20:00). В файл `STATS_OUTPUT_DIR/traffic_YYYY-MM-DD.txt` записываются количество машин по каждому часу и итог за день. В 20:00 и при завершении работы отчёт сохраняется и при указанных `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID` отправляется в Telegram (файл + подпись с итогом). Чтобы отправлять отчёт пользователю @leshee: создайте бота через [@BotFather](https://t.me/BotFather), укажите `TELEGRAM_BOT_TOKEN`; пользователь @leshee должен один раз написать боту, после чего его `chat_id` можно узнать через [getUpdates](https://core.telegram.org/bots/api#getupdates) и задать `TELEGRAM_CHAT_ID`.
 
 ### Configuration via config.py
 
@@ -228,6 +235,11 @@ Configuration in `config.py`: `VEHICLE_CLASSES = [2, 7]`
 4. **Stop:**
    - Press `q` in video window (if `SHOW_VIDEO=true`)
    - Or `Ctrl+C` in terminal
+
+5. **Горячие клавиши в окне видео:**
+   - **Q** — выход
+   - **W** — смена модели YOLO (nano → small → medium → …)
+   - **E** — смена видеопотока (канал 101 ↔ 102). Текущая модель и канал отображаются на экране.
 
 ## YOLOv8 Models
 
@@ -265,23 +277,17 @@ For details see [MIGRATION_TO_ONNX.md](MIGRATION_TO_ONNX.md)
 
 ## Building Executable File
 
-To create .exe file that can be run on any Windows computer without installing Python:
+Создание переносимого .exe для запуска на любом Windows без установки Python:
 
-1. Run: `build.bat`
-2. Executable file will be in: `dist\traffic-counter.exe`
-
-Detailed instructions: [BUILD.md](BUILD.md)
+1. Запустите `build.bat` (нужны Python и интернет для установки зависимостей).
+2. В папке `dist\traffic-counter\` появятся `traffic-counter.exe` и все нужные библиотеки.
+3. Перенесите папку целиком на другой ПК, добавьте в неё файл модели (например `yolov8m.onnx`) и при необходимости `config.py`.
 
 ## Troubleshooting
 
-### Problem: ImportError or crash when importing cv2 on Ubuntu (headless/server)
+### Problem: ImportError or crash when importing cv2
 
-**Solution:** The project uses `opencv-python-headless` (no GUI libraries required). If you still have the old environment, reinstall dependencies:
-```bash
-rm -f venv/.dependencies_installed
-./run.sh
-```
-Or manually: `pip install opencv-python-headless>=4.8.0`. On a server without a display, set `SHOW_VIDEO=false` so the app does not try to open a window.
+**Solution:** На Windows используйте `opencv-python` (не headless): `pip install opencv-python>=4.8.0`. Переустановите зависимости из `requirements.txt`.
 
 ### Problem: Cannot connect to RTSP stream
 
